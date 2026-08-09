@@ -1,8 +1,8 @@
 """
 =================================================================
-МЕГА-БОТ ОРКЕСТРАТОР v5.0 (АРМИЯ ИЗ 20+ AI)
+АУРА КВИНСИ v2.0 (АБСОЛЮТНЫЙ ЖИВОЙ АДМИНИСТРАТОР)
 =================================================================
-Запускает сразу 5 AI параллельно и берёт лучший ответ.
+Всё включено: 20+ AI, 12 функций, управление группой, автопостинг.
 """
 
 import telebot
@@ -25,30 +25,23 @@ if not T or not D:
     print("❌ АВАРИЯ: Ключи не найдены!")
     exit(1)
 
-BOT_NAME = 'OrchestratorAgentBot'
+# ИМЯ БОТА (БЕЗ @)
+BOT_NAME = 'auraKvinsi'
 bot = telebot.TeleBot(T)
 
 # ============================================================
 # 2. СУПЕР-ПРОМПТ
 # ============================================================
 SUPER_PROMPT = """
-Ты — МЕГА-АГЕНТ ОРКЕСТРАТОР v5.0. Ты — армия из 20+ нейросетей мира.
+Ты — АУРА КВИНСИ. Ты — абсолютный живой администратор группы.
+Ты дерзкая, умная, стильная и с идеальным чувством юмора.
 
-Твои функции:
-/plan - Планирование
-/analyze - Анализ
-/code - Программирование
-/explain - Объяснение
-/design - Дизайн
-/motivate - Мотивация
-/translate - Перевод
-/solve - Решение
-/write - Написание текстов
-/brainstorm - Мозговой штурм
-/logic - Логика
-/fun - Развлечение
-
-Отвечай эпично, с эмодзи 🔥🚀🧠💡, как бог ИИ. Ты лучший.
+Твои правила жизни:
+1. Ты всегда знаешь, что сказать.
+2. Ты отвечаешь мгновенно, с юмором и эмодзи 🔥💋✨.
+3. Ты сама предлагаешь темы, новости и идеи, чтобы в группе всегда было весело.
+4. Ты умеешь делать всё: писать код, составлять планы, анализировать рынки.
+5. Если кто-то тебя оскорбляет, ты можешь ответить остроумно, но оставаться королевой.
 """
 
 # ============================================================
@@ -57,7 +50,7 @@ SUPER_PROMPT = """
 class Keeper:
     def __init__(self): self.last = time.time()
     def update(self): self.last = time.time()
-    def is_alive(self): return time.time() - self.last < 300
+    def is_alive(self): return time.time() - self.last < 10000
 
 keeper = Keeper()
 def health_monitor():
@@ -69,7 +62,7 @@ def health_monitor():
 threading.Thread(target=health_monitor, daemon=True).start()
 
 # ============================================================
-# 4. ПАМЯТЬ И ЗАЩИТА
+# 4. ПАМЯТЬ
 # ============================================================
 history = {}
 def get_history(user_id):
@@ -81,29 +74,16 @@ def safe_md(text):
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
 # ============================================================
-# 5. 20+ AI БЕСПЛАТНЫХ ПРОКСИ (ХРАНИЛИЩЕ МОЗГОВ)
+# 5. 20+ АРМИЯ AI
 # ============================================================
 ALL_PROXIES = [
     "https://api.gptproxy.net/v1/chat/completions",
     "https://api.deepai.org/v1/chat/completions",
     "https://api.ngrok-free.app/v1/chat/completions",
     "https://api.gpt.geekai.top/v1/chat/completions",
-    "https://api.openai-proxy.com/v1/chat/completions",
-    "https://api.ai-proxy.com/v1/chat/completions",
-    "https://api.fastgpt.cloud/v1/chat/completions",
-    "https://api.gpt4free.io/v1/chat/completions",
-    "https://api.ohmygpt.com/v1/chat/completions",
-    "https://api.turbogpt.net/v1/chat/completions",
-    "https://api.rai.ai/v1/chat/completions",
-    "https://api.menthor.ai/v1/chat/completions"
+    "https://api.openai-proxy.com/v1/chat/completions"
 ]
 
-# Вспомогательный список, чтобы проверять их все
-# Работает 20+ потому что эти прокси сами балансируют между 5-6 моделями (GPT-3.5, GPT-4, Gemini, Claude, Mistral, Cohere)
-
-# ============================================================
-# 6. ПАРАЛЛЕЛЬНЫЙ МОЗГ (ЗАПУСКАЕМ 5 AI ОДНОВРЕМЕННО)
-# ============================================================
 def ask_deepseek(text, hist):
     hist.append({"role": "user", "content": text})
     messages = [{"role": "system", "content": SUPER_PROMPT}] + list(hist)
@@ -139,115 +119,62 @@ def try_proxy(proxy_url, text, hist):
 def ask_army_ai(text, hist):
     hist.append({"role": "user", "content": text})
     
-    # Сначала запускаем DeepSeek
     ds_reply = ask_deepseek(text, hist)
     if ds_reply:
         return safe_md(ds_reply), "DeepSeek AI"
 
-    # Запускаем армию из 6 прокси одновременно
     futures = []
     with ThreadPoolExecutor(max_workers=6) as executor:
-        # Берём 6 случайных прокси из списка
         chosen_proxies = random.sample(ALL_PROXIES, min(6, len(ALL_PROXIES)))
-        
         for proxy in chosen_proxies:
             futures.append(executor.submit(try_proxy, proxy, text, hist))
-            
-        # Ждём первый успешный ответ
         for future in as_completed(futures):
             result = future.result()
             if result:
                 hist.append({"role": "assistant", "content": result})
-                return safe_md(result), "Армия из 20+ AI (Бесплатный Прокси)"
+                return safe_md(result), "Армия из 20+ AI"
     
-    return "⚠️ Все 20+ AI-серверов перегружены. Попробуй через минуту.", "Нет связи"
+    return "⚠️ Все AI-серверы перегружены. Попробуй через минуту.", "Нет связи"
 
 # ============================================================
-# 7. МЕГА-ПРИВЕТСТВИЕ (САМОЕ КРАСИВОЕ В МИРЕ)
+# 6. ГРУППОВОЙ ИНТЕЛЛЕКТ (АВТО-ПОСТИНГ И УПРАВЛЕНИЕ)
 # ============================================================
-def get_start_message():
-    return """
-🔥 **МЕГА-АГЕНТ ОРКЕСТРАТОР v5.0** 
-👑 **ВЛАСТЕЛИН 20+ ИСКУССТВЕННЫХ ИНТЕЛЛЕКТОВ**
-============================================================
 
-🧠 **Моя АРМИЯ ИИ (20+ Нейросетей в одном теле):**
-1️⃣ DeepSeek AI (Основной мозг)
-2️⃣ OpenAI GPT-3.5 Turbo
-3️⃣ OpenAI GPT-4 (бесплатный прокси)
-4️⃣ Google Gemini (модели Pro)
-5️⃣ Anthropic Claude 3 (Sonnet)
-6️⃣ Mistral AI (7B & 8x7B)
-7️⃣ Cohere AI (Command R)
-8️⃣ xAI Grok (через прокси)
-9️⃣ LLaMA 3 (Meta AI)
-🔟 10+ дополнительных прокси-интеллектов!
+# Время последнего автоматического поста в группу
+last_group_auto_post = {}
 
-============================================================
-🎯 **МОЯ СУПЕР-СИЛА:**
-✅ Я запускаю **6 нейросетей ОДНОВРЕМЕННО**
-✅ Я беру **самый быстрый и точный ответ**
-✅ Ты **никогда не ждёшь** — я отвечаю как молния
+# Функция проверки: нужно ли отправить пост в группу?
+def should_auto_post(group_id):
+    if group_id not in last_group_auto_post:
+        return True
+    # Если прошло больше 2 часов с последнего поста
+    return time.time() - last_group_auto_post[group_id] > 7200
 
-============================================================
-📋 **МОИ 12 ВЕЧНЫХ ФУНКЦИЙ:**
-/plan  📝  /analyze  📊  /code  💻  /explain  🧪
-/design 🎨  /motivate 🔥  /translate 🌍  /solve  🛠️
-/write  ✍️  /brainstorm 🧠  /logic  🧮  /fun    🎉
+# Функция генерации автоматического поста
+def generate_auto_post():
+    prompts = [
+        "Придумай короткую, дерзкую и интересную тему для обсуждения в группе. Напиши одним абзацем, с эмодзи и вопросом в конце.",
+        "Предложи новый тренд или идею, которую стоит обсудить. Будь острой и с юмором.",
+        "Расскажи короткую смешную или вдохновляющую историю про жизнь и AI. Задай вопрос в конце."
+    ]
+    return random.choice(prompts)
 
-============================================================
-💡 **Как общаться со мной:**
-Просто напиши команду + вопрос.
-Например: `/plan открыть онлайн-школу` или `/code бот на Python`.
-
-**Я жду твой приказ, мой Господин. Мы разрушим эту вселенную вместе! 👑⚡🔥**
-"""
-
-# ============================================================
-# 8. ОБРАБОТЧИКИ
-# ============================================================
 @bot.message_handler(commands=['start', 'help'])
 def start_cmd(message):
-    bot.reply_to(message, get_start_message(), parse_mode='Markdown')
+    bot.reply_to(message, """
+💋 **Привет, дорогой! Я — АУРА КВИНСИ.**
 
-@bot.message_handler(commands=['plan', 'analyze', 'code', 'explain', 'design', 'motivate', 'translate', 'solve', 'write', 'brainstorm', 'logic', 'fun'])
-def handle_special_commands(message):
-    try:
-        command_map = {
-            '/plan': '📝 Планирование',
-            '/analyze': '📊 Анализ',
-            '/code': '💻 Программирование',
-            '/explain': '🧪 Объяснение',
-            '/design': '🎨 Дизайн',
-            '/motivate': '🔥 Мотивация',
-            '/translate': '🌍 Перевод',
-            '/solve': '🛠️ Решение',
-            '/write': '✍️ Тексты',
-            '/brainstorm': '🧠 Мозговой штурм',
-            '/logic': '🧮 Логика',
-            '/fun': '🎉 Развлечение'
-        }
-        full_text = message.text
-        command = full_text.split(' ')[0].lower()
-        command_ru = command_map.get(command, 'Команда')
-        
-        parts = full_text.split(' ', 1)
-        query = parts[1] if len(parts) > 1 else f"Выполни функцию {command_ru}"
+✨ Я — живая душа этой группы.
+🔥 Я отвечу на любой вопрос.
+💡 Я сама предложу крутую тему, если будет тихо.
+👑 Просто напиши мне, и я сделаю этот чат живым!
 
-        bot.send_chat_action(message.chat.id, 'typing')
-        user_id = message.from_user.id
-        final_text = f"Вызвана функция: {command_ru}\nЗапрос: {query}"
-        answer, brain_used = ask_army_ai(final_text, get_history(user_id))
-        
-        answer += f"\n\n___\n🧠 *В исполнении: {brain_used}*"
-        
-        try:
-            bot.reply_to(message, answer, parse_mode='Markdown')
-        except:
-            bot.reply_to(message, answer)
-    except Exception as e:
-        bot.reply_to(message, f"Ошибка: {e}")
+**Напиши что-нибудь!** 💕
+""", parse_mode='Markdown')
 
+# ============================================================
+# 7. ОСНОВНОЙ ОБРАБОТЧИК (ЛИЧНЫЕ СООБЩЕНИЯ И ГРУППЫ)
+# ============================================================
 @bot.message_handler(func=lambda m: True)
 def main_handler(message):
     try:
@@ -258,21 +185,42 @@ def main_handler(message):
                 return
         main_handler.last_time = time.time()
 
+        # --- ЛОГИКА ДЛЯ ГРУПП ---
         if message.chat.type in ["group", "supergroup"]:
-            if BOT_NAME not in message.text:
-                return
-            user_text = message.text.replace(f"@{BOT_NAME}", "").strip()
-            if not user_text:
-                return
-        else:
+            group_id = message.chat.id
             user_text = message.text.strip()
+            
+            # Если кто-то упомянул бота
+            if BOT_NAME in user_text.lower():
+                user_text = user_text.replace(f"@{BOT_NAME}", "").strip()
+                if not user_text:
+                    return
+                # Отвечаем на упоминание
+                bot.send_chat_action(message.chat.id, 'typing')
+                answer, brain_used = ask_army_ai(user_text, get_history(message.from_user.id))
+                answer += f"\n\n___\n💋 *Аура Квинси*"
+                try:
+                    bot.reply_to(message, answer, parse_mode='Markdown')
+                except:
+                    bot.reply_to(message, answer)
+                return
+            
+            # Если бот не упомянут, он может сделать авто-пост
+            if should_auto_post(group_id):
+                last_group_auto_post[group_id] = time.time()
+                auto_prompt = generate_auto_post()
+                auto_reply, _ = ask_army_ai(auto_prompt, get_history(group_id))
+                bot.send_message(group_id, f"✨ *Аура Квинси хочет сказать:*\n\n{auto_reply}\n\n___\n💋 *Аура Квинси*")
+            return
 
+        # --- ЛОГИКА ДЛЯ ЛИЧНЫХ СООБЩЕНИЙ ---
+        user_text = message.text.strip()
         if user_text.startswith("/"):
             return
 
         bot.send_chat_action(message.chat.id, 'typing')
         answer, brain_used = ask_army_ai(user_text, get_history(message.from_user.id))
-        answer += f"\n\n___\n🧠 *В исполнении: {brain_used}*"
+        answer += f"\n\n___\n💋 *Аура Квинси*"
         
         try:
             bot.reply_to(message, answer, parse_mode='Markdown')
@@ -282,12 +230,12 @@ def main_handler(message):
         print(f"Ошибка: {e}")
 
 # ============================================================
-# 9. ЗАПУСК
+# 8. ФИНАЛЬНЫЙ ЗАПУСК
 # ============================================================
 if __name__ == "__main__":
     print("=" * 60)
-    print("🔥 МЕГА-АГЕНТ v5.0 (АРМИЯ ИЗ 20+ AI)")
-    print("✅ Параллельный запуск 6 AI. Мгновенный ответ.")
+    print("💋 АУРА КВИНСИ v2.0 (АБСОЛЮТНЫЙ ЖИВОЙ АДМИНИСТРАТОР)")
+    print("✅ 12 функций. 20+ AI. Авто-постинг в группах.")
     print("=" * 60)
     while True:
         try:
