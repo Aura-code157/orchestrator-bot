@@ -5,115 +5,96 @@ import os
 import threading
 from collections import deque
 
-# =====================================================================
-# ЗАГРУЗКА КЛЮЧЕЙ ИЗ СИСТЕМЫ (БЕЗ КЛЮЧЕЙ В КОДЕ!)
-# =====================================================================
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
-DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
+T = os.getenv('TELEGRAM_TOKEN')
+D = os.getenv('DEEPSEEK_API_KEY')
 
-if not TELEGRAM_TOKEN:
-    print("❌ ОШИБКА: Не найден TELEGRAM_TOKEN.")
-    exit(1)
-if not DEEPSEEK_API_KEY:
-    print("❌ ОШИБКА: Не найден DEEPSEEK_API_KEY.")
+if not T or not D:
+    print("❌ ОШИБКА: Ключи не найдены! Запустите через start.sh")
     exit(1)
 
-# ВСТАВЬТЕ ИМЯ БОТА БЕЗ @. Например: 'OrchestratorAgentBot'
-BOT_USERNAME = 'OrchestratorAgentBot'
+BOT_NAME = 'OrchestratorAgentBot'
+bot = telebot.TeleBot(T)
 
-# Инициализация бота
-bot = telebot.TeleBot(TELEGRAM_TOKEN)
-
-# Системный промпт (чтобы бот был дерзким и умным)
-SYSTEM_PROMPT = """
+PROMPT = """
 Ты — МЕГА-АГЕНТ-ОРКЕСТРАТОР.
-Отвечай дерзко, с юмором, используй эмодзи 🔥 🚀 🤖.
-Если просят план или анализ — делай крутой разбор.
+Отвечай дерзко, с юмором, структурно и используй эмодзи 🔥🚀🤖.
+Если просят план или код — давай сразу готовое решение.
 """
 
-# =====================================================================
-# СИСТЕМА ЗДОРОВЬЯ (ХОК ЛИ)
-# =====================================================================
+print("⚡ МЕГА-БОТ ЗАГРУЖЕН И ЖДЁТ КОМАНД...")
+
 class Keeper:
-    def __init__(self):
-        self.last_activity = time.time()
-    def update(self):
-        self.last_activity = time.time()
-    def check(self):
-        return time.time() - self.last_activity < 300
+    def __init__(self): self.last = time.time()
+    def update(self): self.last = time.time()
+    def is_alive(self): return time.time() - self.last < 300
 
 keeper = Keeper()
 
-def monitor_loop():
+def health_monitor():
     while True:
-        if not keeper.check():
-            print("❌ Бот завис! Экстренный перезапуск...")
+        if not keeper.is_alive():
+            print("🔴 Обнаружен сбой. Экстренный перезапуск...")
             os._exit(1)
         time.sleep(30)
 
-threading.Thread(target=monitor_loop, daemon=True).start()
+threading.Thread(target=health_monitor, daemon=True).start()
 
-# =====================================================================
-# ПАМЯТЬ И ЛОГИКА
-# =====================================================================
-hist = {}
+history = {}
 def get_history(user_id):
-    if user_id not in hist:
-        hist[user_id] = deque(maxlen=4)
-    return hist[user_id]
+    if user_id not in history:
+        history[user_id] = deque(maxlen=4)
+    return history[user_id]
 
-def ask_deepseek(text, history):
-    history.append({"role": "user", "content": text})
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + list(history)
-
+def ask_deepseek(text, hist):
+    hist.append({"role": "user", "content": text})
+    messages = [{"role": "system", "content": PROMPT}] + list(hist)
     try:
         resp = requests.post(
             "https://api.deepseek.com/v1/chat/completions",
-            headers={
-                "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "model": "deepseek-chat",
-                "messages": messages,
-                "temperature": 0.85
-            },
-            timeout=20
+            headers={"Authorization": f"Bearer {D}", "Content-Type": "application/json"},
+            json={"model": "deepseek-chat", "messages": messages, "temperature": 0.85},
+            timeout=12
         )
         if resp.status_code == 200:
-            answer = resp.json()["choices"][0]["message"]["content"]
-            history.append({"role": "assistant", "content": answer})
-            return answer
-        return "⚠️ Ошибка от DeepSeek."
+            reply = resp.json()["choices"][0]["message"]["content"]
+            hist.append({"role": "assistant", "content": reply})
+            return reply
+        return "⚠️ DeepSeek перегружен. Попробуй позже."
     except:
         return "⌛ Тайм-аут соединения."
 
-# =====================================================================
-# КОМАНДЫ
-# =====================================================================
 @bot.message_handler(commands=['start', 'help'])
-def start_msg(message):
-    bot.reply_to(message, "🔥 **АГЕНТ ЗАПУЩЕН!**\nПиши вопросы, я всё решу!")
+def start_cmd(message):
+    bot.reply_to(message, """
+🔥 **МЕГА-БОТ ГОТОВ К БОЮ!**
 
-# =====================================================================
-# ГЛАВНЫЙ ОБРАБОТЧИК (С ЗАЩИТОЙ ОТ 400 ОШИБКИ)
-# =====================================================================
+**Технические характеристики:**
+🤖 Язык: Python 3
+🧠 Мозг: DeepSeek API
+🧩 Память: 4 последних сообщения
+🛡️ Защита: Авто-рестарт при сбоях
+
+**Что я умею:**
+🚀 Писать код и алгоритмы
+💡 Генерировать идеи
+🧠 Анализировать данные
+
+Просто напиши мне вопрос! 👑
+""")
+
 @bot.message_handler(func=lambda m: True)
-def handle_all(message):
+def main_handler(message):
     try:
         keeper.update()
-
-        # Анти-спам (не отвечать чаще 2 раз в секунду)
-        if hasattr(handle_all, "last_time"):
-            if time.time() - handle_all.last_time < 2:
+        if hasattr(main_handler, "last_time"):
+            if time.time() - main_handler.last_time < 2:
                 return
-        handle_all.last_time = time.time()
+        main_handler.last_time = time.time()
 
-        # Логика для групп и лички
         if message.chat.type in ["group", "supergroup"]:
-            if BOT_USERNAME not in message.text:
+            if BOT_NAME not in message.text:
                 return
-            user_text = message.text.replace(f"@{BOT_USERNAME}", "").strip()
+            user_text = message.text.replace(f"@{BOT_NAME}", "").strip()
             if not user_text:
                 return
         else:
@@ -123,12 +104,8 @@ def handle_all(message):
             return
 
         bot.send_chat_action(message.chat.id, "typing")
-        user_id = message.from_user.id
-
-        # Получаем ответ от AI
-        answer = ask_deepseek(user_text, get_history(user_id))
-
-        # === БЕЗОПАСНАЯ ОТПРАВКА (ЗАЩИТА ОТ 400) ===
+        answer = ask_deepseek(user_text, get_history(message.from_user.id))
+        
         try:
             bot.reply_to(message, answer, parse_mode="Markdown")
         except:
@@ -137,19 +114,9 @@ def handle_all(message):
     except Exception as e:
         print(f"Ошибка: {e}")
 
-# =====================================================================
-# ЗАПУСК
-# =====================================================================
 if __name__ == "__main__":
-    print("=" * 50)
-    print("🤖 ОРКЕСТРАТОР БОТ РАБОТАЕТ!")
-    print("🔥 Ошибка 400 исправлена.")
-    print("💡 Нажми CTRL+C для остановки")
-    print("=" * 50)
-
     while True:
         try:
-            bot.polling(none_stop=True, timeout=120)
-        except Exception as e:
-            print(f"🔄 Перезапуск через 5 сек: {e}")
-            time.sleep(5)
+            bot.polling(none_stop=True, timeout=60)
+        except:
+            time.sleep(1)
