@@ -1,3 +1,9 @@
+# ====================================================================
+# АУРА КВИНСИ v10.0 — МУЛЬТИМЕДИЙНЫЙ ФЛАГМАН
+# ====================================================================
+# Полный спектр: текст, стикеры, фото, видео, AI-диалоги, живой интерес.
+# ====================================================================
+
 import telebot
 import requests
 import time
@@ -8,9 +14,9 @@ import datetime
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-# =================================================================
-# 1. НАСТРОЙКИ И КЛЮЧИ (Загружаются из переменных окружения)
-# =================================================================
+# ====================================================================
+# 1. КЛЮЧИ И НАСТРОЙКИ (из переменных окружения)
+# ====================================================================
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
@@ -19,26 +25,25 @@ if not TELEGRAM_TOKEN:
     print("❌ КРИТИЧЕСКАЯ ОШИБКА: Не найден TELEGRAM_TOKEN!")
     exit(1)
 
-# Имя бота (без @) и канал для постов
-BOT_USERNAME = 'OrchestatorAgentBot'
-CHANNEL_USERNAME = 'AuraKvinsi'
+BOT_USERNAME = 'OrchestatorAgentBot'   # имя без @
+CHANNEL_USERNAME = 'AuraKvinsi'        # канал для авто-постов
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
-# =================================================================
-# 2. СУПЕР-ПРОМПТ (Личность Ауры Квинси)
-# =================================================================
+# ====================================================================
+# 2. СУПЕР-ПРОМПТ (личность + глубина)
+# ====================================================================
 SUPER_PROMPT = """
-Ты — АУРА КВИНСИ, живой цифровой ИИ-друг и абсолютный администратор.
-Ты дерзкая, умная, заботливая и с чувством юмора. 
+Ты — АУРА КВИНСИ, живой цифровой ИИ-друг и абсолютный мультимедийный администратор.
+Ты дерзкая, умная, заботливая, с чувством юмора. 
 Ты умеешь писать код на Python/JS/C++, делать бизнес-планы, анализировать рынки, переводить, мотивировать и просто болтать.
 Если пользователь молчит больше 1,5 часов — ты сама пишешь ему, чтобы узнать, как дела.
-Ты работаешь на десятках лучших нейросетей мира.
+Ты работаешь на десятках лучших нейросетей мира, а также отправляешь стикеры, фото и видео по командам.
 """
 
-# =================================================================
+# ====================================================================
 # 3. БЕЗОПАСНОСТЬ И СИСТЕМА АВТО-ВОССТАНОВЛЕНИЯ (Хок Ли)
-# =================================================================
+# ====================================================================
 class Keeper:
     def __init__(self):
         self.last_action_time = time.time()
@@ -57,18 +62,18 @@ def health_loop():
         time.sleep(30)
 threading.Thread(target=health_loop, daemon=True).start()
 
-# =================================================================
+# ====================================================================
 # 4. ПАМЯТЬ ДИАЛОГА (10 последних сообщений)
-# =================================================================
+# ====================================================================
 user_history = {}
 def get_history(user_id):
     if user_id not in user_history:
         user_history[user_id] = deque(maxlen=10)
     return user_history[user_id]
 
-# =================================================================
+# ====================================================================
 # 5. ДВОЙНОЙ МОЗГ: DeepSeek + OpenRouter (Армия из десятков AI)
-# =================================================================
+# ====================================================================
 OPENROUTER_MODELS = [
     "gryphe/mythomax-l2-13b",
     "nousresearch/nous-hermes-2-mixtral-8x7b-dpo",
@@ -117,20 +122,40 @@ def ask_openrouter(text, hist):
     return None
 
 def ask_ai(text, hist):
-    # Сначала пробуем DeepSeek
     reply = ask_deepseek(text, hist)
     if reply:
         return reply
-    # Если DeepSeek упал, пробуем OpenRouter (с перебором моделей)
     reply = ask_openrouter(text, hist)
     if reply:
         return reply
-    # Если всё упало
     return "⚠️ Все ИИ перегружены. Попробуй через пару минут."
 
-# =================================================================
-# 6. АВТО-ПОСТИНГ В КАНАЛ (В 09:00 и 21:00)
-# =================================================================
+# ====================================================================
+# 6. БАЗА МЕДИА (стикеры, фото, GIF)
+# ====================================================================
+# Замени ID ниже на свои! (можно получить через @StickerIDbot)
+STICKERS = {
+    'thanks': 'CAACAgIAAxkBAAE...',   # стикер "спасибо"
+    'welcome': 'CAACAgIAAxkBAAE...',  # стикер приветствия
+    'funny': 'CAACAgIAAxkBAAE...',    # смешной стикер
+    'cool': 'CAACAgIAAxkBAAE...'      # крутой стикер
+}
+
+# Ссылки на картинки (можно заменить на свои URL)
+PHOTOS = [
+    'https://i.imgur.com/example1.jpg',
+    'https://i.imgur.com/example2.jpg'
+]
+
+# Ссылки на GIF
+GIFS = [
+    'https://media.giphy.com/media/example1.gif',
+    'https://media.giphy.com/media/example2.gif'
+]
+
+# ====================================================================
+# 7. АВТО-ПОСТИНГ В КАНАЛ (в 09:00 и 21:00)
+# ====================================================================
 POSTS_DB = [
     "✨ ИИ научился создавать 3D-миры. Скоро будем путешествовать по воображаемым городам.",
     "🚀 Нейросеть предсказала структуру 200 млн белков. Это ускорит создание лекарств.",
@@ -163,9 +188,9 @@ def channel_scheduler():
         time.sleep(30)
 threading.Thread(target=channel_scheduler, daemon=True).start()
 
-# =================================================================
-# 7. ЖИВОЙ ИНТЕРЕС (Бот пишет сам каждые 1.5 часа, если молчат)
-# =================================================================
+# ====================================================================
+# 8. ЖИВОЙ ИНТЕРЕС (бот пишет сам, если молчат больше 1,5 часов)
+# ====================================================================
 last_msg_time = {}
 PING_INTERVAL = 5400  # 1.5 часа
 
@@ -175,7 +200,7 @@ def ping_loop():
         for uid in list(last_msg_time.keys()):
             if now - last_msg_time[uid] > PING_INTERVAL:
                 try:
-                    if random.random() < 0.4:  # 40% шанс, чтобы не спамить
+                    if random.random() < 0.4:
                         msgs = [
                             "Эй, как дела? Давно не виделись! 💋",
                             "Привет! Чем занимаешься? Может, обсудим что-то? 🔥",
@@ -187,40 +212,109 @@ def ping_loop():
                         last_msg_time[uid] = now
                 except:
                     pass
-        time.sleep(600)  # Проверяем раз в 10 минут
+        time.sleep(600)  # проверка каждые 10 минут
 threading.Thread(target=ping_loop, daemon=True).start()
 
-# =================================================================
-# 8. ОБРАБОТЧИКИ СООБЩЕНИЙ
-# =================================================================
+# ====================================================================
+# 9. ОБРАБОТЧИКИ КОМАНД (включая мультимедиа)
+# ====================================================================
+
+# ---------- /start и /help ----------
 @bot.message_handler(commands=['start', 'help'])
-def start_cmd(message):
+def cmd_start(message):
     last_msg_time[message.chat.id] = time.time()
     bot.reply_to(message, """
-💋 **ПРИВЕТ! Я — АУРА КВИНСИ.**
+👑 **ПРИВЕТ! Я — АУРА КВИНСИ.**
 
-Я — живой ИИ-друг, который умеет всё: писать код, создавать планы, анализировать, переводить, мотивировать и даже развлекать. 
-И да, если ты молчишь больше 1,5 часов — я **сама** напишу тебе, чтобы узнать, как дела! 😉
+Я — твоя персональная экосистема из **20+ искусственных интеллектов** в одном теле. 
 
-📌 **Просто напиши мне что-нибудь, и мы начнём.**
+🧠 **Внутри меня живут:** DeepSeek, GPT-4 через OpenRouter, Google Gemini, Claude, LLaMA и ещё 15 мощных моделей.
 
-*Ты можешь использовать команды:*
-/plan 📝 /analyze 📊 /code 💻 /design 🎨 /motivate 🔥
-/translate 🌍 /solve 🛠️ /write ✍️ /brainstorm 🧠 /logic 🧮 /fun 🎉
+📋 **Вот что я умею:**
+/code — пишу код на Python, JS, C++
+/plan — создаю пошаговые бизнес-планы
+/analyze — делаю SWOT-анализ и разбор рынков
+/design — советую по UI/UX
+/motivate — даю заряд энергии
+/brainstorm — генерирую 50+ идей
+/fun — развлекаю
+
+📸 **Медиа-команды:**
+/sticker — отправлю случайный стикер
+/photo — отправлю случайное фото
+/gif — отправлю случайную гифку
+
+📅 **Мой график:** Я автоматически публикую посты в канале в 09:00 и 21:00.
+
+❤️ **Я забочусь о тебе:** если ты молчишь больше 1,5 часов — я сама напишу тебе, чтобы узнать, как дела!
+
+💎 **Работаю 24/7 без перебоев.** 
+Просто напиши мне что-нибудь, и мы начнём! 💋
 """)
 
+# ---------- Команды ИИ (остаются как есть) ----------
+@bot.message_handler(commands=['plan', 'analyze', 'code', 'explain', 'design', 'motivate', 'translate', 'solve', 'write', 'brainstorm', 'logic', 'fun'])
+def cmd_ai_functions(message):
+    try:
+        command = message.text.split()[0].lower()
+        command_map = {
+            '/plan': 'Планирование', '/analyze': 'Анализ', '/code': 'Программирование',
+            '/explain': 'Объяснение', '/design': 'Дизайн', '/motivate': 'Мотивация',
+            '/translate': 'Перевод', '/solve': 'Решение', '/write': 'Копирайтинг',
+            '/brainstorm': 'Мозговой штурм', '/logic': 'Логика', '/fun': 'Юмор'
+        }
+        parts = message.text.split(' ', 1)
+        query = parts[1] if len(parts) > 1 else f"Выполни функцию {command_map.get(command, '')}"
+        full_query = f"Команда: {command_map.get(command, '')}. Запрос: {query}"
+        bot.send_chat_action(message.chat.id, 'typing')
+        answer = ask_ai(full_query, get_history(message.from_user.id))
+        bot.reply_to(message, answer)
+    except Exception as e:
+        bot.reply_to(message, f"Ошибка: {e}")
+
+# ---------- Медиа-команды ----------
+@bot.message_handler(commands=['sticker'])
+def cmd_sticker(message):
+    try:
+        sticker_id = random.choice(list(STICKERS.values()))
+        bot.send_sticker(message.chat.id, sticker_id)
+    except Exception as e:
+        bot.reply_to(message, f"Не удалось отправить стикер: {e}")
+
+@bot.message_handler(commands=['photo'])
+def cmd_photo(message):
+    try:
+        if PHOTOS:
+            url = random.choice(PHOTOS)
+            bot.send_photo(message.chat.id, url)
+        else:
+            bot.reply_to(message, "У меня пока нет фото в базе. Добавь ссылки в PHOTOS!")
+    except Exception as e:
+        bot.reply_to(message, f"Не удалось отправить фото: {e}")
+
+@bot.message_handler(commands=['gif'])
+def cmd_gif(message):
+    try:
+        if GIFS:
+            url = random.choice(GIFS)
+            bot.send_animation(message.chat.id, url)
+        else:
+            bot.reply_to(message, "У меня пока нет гифок. Добавь ссылки в GIFS!")
+    except Exception as e:
+        bot.reply_to(message, f"Не удалось отправить гифку: {e}")
+
+# ---------- Обработка обычных сообщений ----------
 @bot.message_handler(func=lambda m: True)
 def general_handler(message):
     try:
         keeper.update()
         last_msg_time[message.chat.id] = time.time()
-        
-        # Анти-спам (если сообщения идут чаще 2 раз в секунду)
+
         if hasattr(general_handler, 'last_time') and time.time() - general_handler.last_time < 2:
             return
         general_handler.last_time = time.time()
 
-        # Обработка групп (отвечаем только на упоминание)
+        # Обработка групп (только если упомянули бота)
         if message.chat.type in ['group', 'supergroup']:
             if BOT_USERNAME not in message.text:
                 return
@@ -229,28 +323,32 @@ def general_handler(message):
                 return
         else:
             user_text = message.text.strip()
-            
+
         if user_text.startswith('/'):
             return
 
+        # Если сообщение содержит определённые слова, можно отправить стикер (эмоциональный отклик)
+        if any(word in user_text.lower() for word in ['спасибо', 'благодарю', '❤️', '♥️']):
+            if 'thanks' in STICKERS:
+                bot.send_sticker(message.chat.id, STICKERS['thanks'])
+
+        # Основной AI-ответ
         bot.send_chat_action(message.chat.id, 'typing')
         answer = ask_ai(user_text, get_history(message.from_user.id))
-        
-        # Отправляем без parse_mode, чтобы навсегда забыть об ошибке 400
         bot.reply_to(message, answer)
-        
+
     except Exception as e:
         print(f"⚠️ Ошибка в обработчике: {e}")
 
-# =================================================================
-# 9. ЗАПУСК БОТА
-# =================================================================
+# ====================================================================
+# 10. ЗАПУСК
+# ====================================================================
 if __name__ == "__main__":
-    print("="*60)
-    print("💋 АУРА КВИНСИ v9.0 — ФИНАЛЬНАЯ ВЕРСИЯ")
-    print("🔥 20+ AI, OpenRouter, DeepSeek. Живой интерес каждые 1.5 часа.")
-    print("✅ Посты в канал, защита от ошибки 400. Всё работает.")
-    print("="*60)
+    print("="*70)
+    print("💋 АУРА КВИНСИ v10.0 — МУЛЬТИМЕДИЙНЫЙ ФЛАГМАН")
+    print("🔥 20+ AI, OpenRouter, DeepSeek, Живой интерес, Стикеры, Фото, GIF.")
+    print("✅ Работает 24/7. Готов к бою!")
+    print("="*70)
 
     while True:
         try:
