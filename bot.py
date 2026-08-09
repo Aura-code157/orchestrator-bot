@@ -1,7 +1,5 @@
 # ====================================================================
-# АУРА КВИНСИ v10.0 — МУЛЬТИМЕДИЙНЫЙ ФЛАГМАН
-# ====================================================================
-# Полный спектр: текст, стикеры, фото, видео, AI-диалоги, живой интерес.
+# АУРА КВИНСИ v10.2 — БЕЗКОМАНДНЫЙ ИНТЕЛЛЕКТ
 # ====================================================================
 
 import telebot
@@ -11,38 +9,40 @@ import os
 import threading
 import random
 import datetime
+import urllib.parse
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ====================================================================
-# 1. КЛЮЧИ И НАСТРОЙКИ (из переменных окружения)
+# 1. КЛЮЧИ И НАСТРОЙКИ
 # ====================================================================
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
+UNSPLASH_ACCESS_KEY = os.getenv('UNSPLASH_ACCESS_KEY')  # опционально
 
 if not TELEGRAM_TOKEN:
     print("❌ КРИТИЧЕСКАЯ ОШИБКА: Не найден TELEGRAM_TOKEN!")
     exit(1)
 
-BOT_USERNAME = 'OrchestatorAgentBot'   # имя без @
-CHANNEL_USERNAME = 'AuraKvinsi'        # канал для авто-постов
+BOT_USERNAME = 'OrchestatorAgentBot'
+CHANNEL_USERNAME = 'AuraKvinsi'
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # ====================================================================
-# 2. СУПЕР-ПРОМПТ (личность + глубина)
+# 2. СУПЕР-ПРОМПТ
 # ====================================================================
 SUPER_PROMPT = """
-Ты — АУРА КВИНСИ, живой цифровой ИИ-друг и абсолютный мультимедийный администратор.
+Ты — АУРА КВИНСИ, живой цифровой ИИ-друг и мультимедийный администратор.
 Ты дерзкая, умная, заботливая, с чувством юмора. 
-Ты умеешь писать код на Python/JS/C++, делать бизнес-планы, анализировать рынки, переводить, мотивировать и просто болтать.
-Если пользователь молчит больше 1,5 часов — ты сама пишешь ему, чтобы узнать, как дела.
-Ты работаешь на десятках лучших нейросетей мира, а также отправляешь стикеры, фото и видео по командам.
+Ты умеешь писать код, делать планы, анализировать, переводить, мотивировать.
+Если пользователь молчит больше 1,5 часов — ты сама пишешь ему.
+Ты работаешь на десятках лучших нейросетей мира и умеешь искать картинки!
 """
 
 # ====================================================================
-# 3. БЕЗОПАСНОСТЬ И СИСТЕМА АВТО-ВОССТАНОВЛЕНИЯ (Хок Ли)
+# 3. БЕЗОПАСНОСТЬ И АВТО-ВОССТАНОВЛЕНИЕ
 # ====================================================================
 class Keeper:
     def __init__(self):
@@ -63,7 +63,7 @@ def health_loop():
 threading.Thread(target=health_loop, daemon=True).start()
 
 # ====================================================================
-# 4. ПАМЯТЬ ДИАЛОГА (10 последних сообщений)
+# 4. ПАМЯТЬ ДИАЛОГА
 # ====================================================================
 user_history = {}
 def get_history(user_id):
@@ -72,7 +72,7 @@ def get_history(user_id):
     return user_history[user_id]
 
 # ====================================================================
-# 5. ДВОЙНОЙ МОЗГ: DeepSeek + OpenRouter (Армия из десятков AI)
+# 5. МОЗГИ: DeepSeek + OpenRouter
 # ====================================================================
 OPENROUTER_MODELS = [
     "gryphe/mythomax-l2-13b",
@@ -131,30 +131,63 @@ def ask_ai(text, hist):
     return "⚠️ Все ИИ перегружены. Попробуй через пару минут."
 
 # ====================================================================
-# 6. БАЗА МЕДИА (стикеры, фото, GIF)
+# 6. БАЗА МЕДИА (замени ID на свои)
 # ====================================================================
-# Замени ID ниже на свои! (можно получить через @StickerIDbot)
 STICKERS = {
-    'thanks': 'CAACAgIAAxkBAAE...',   # стикер "спасибо"
-    'welcome': 'CAACAgIAAxkBAAE...',  # стикер приветствия
-    'funny': 'CAACAgIAAxkBAAE...',    # смешной стикер
-    'cool': 'CAACAgIAAxkBAAE...'      # крутой стикер
+    'thanks': 'CAACAgIAAxkBAAE...',  # стикер "спасибо"
+    'welcome': 'CAACAgIAAxkBAAE...', # приветствие
+    'funny': 'CAACAgIAAxkBAAE...',   # смешной
+    'cool': 'CAACAgIAAxkBAAE...'     # крутой
 }
 
-# Ссылки на картинки (можно заменить на свои URL)
 PHOTOS = [
     'https://i.imgur.com/example1.jpg',
     'https://i.imgur.com/example2.jpg'
 ]
 
-# Ссылки на GIF
 GIFS = [
     'https://media.giphy.com/media/example1.gif',
     'https://media.giphy.com/media/example2.gif'
 ]
 
 # ====================================================================
-# 7. АВТО-ПОСТИНГ В КАНАЛ (в 09:00 и 21:00)
+# 7. ПОИСК КАРТИНОК (команда /pic и естественный запрос)
+# ====================================================================
+def search_image(query):
+    try:
+        if UNSPLASH_ACCESS_KEY:
+            url = "https://api.unsplash.com/search/photos"
+            params = {'query': query, 'per_page': 1, 'orientation': 'landscape'}
+            headers = {'Authorization': f'Client-ID {UNSPLASH_ACCESS_KEY}'}
+            resp = requests.get(url, headers=headers, params=params, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data['results']:
+                    return data['results'][0]['urls']['regular']
+        fallback_url = f"https://source.unsplash.com/featured/?{urllib.parse.quote(query)}"
+        test = requests.head(fallback_url, timeout=5)
+        if test.status_code == 200:
+            return fallback_url
+    except:
+        pass
+    return None
+
+@bot.message_handler(commands=['pic'])
+def cmd_pic(message):
+    parts = message.text.split(' ', 1)
+    if len(parts) < 2 or not parts[1].strip():
+        bot.reply_to(message, "📸 Напиши, что искать. Например: `/pic закат`")
+        return
+    query = parts[1].strip()
+    bot.send_chat_action(message.chat.id, 'upload_photo')
+    img_url = search_image(query)
+    if img_url:
+        bot.send_photo(message.chat.id, img_url, caption=f"✨ По запросу «{query}»")
+    else:
+        bot.reply_to(message, "😔 Не удалось найти картинку. Попробуй другое слово.")
+
+# ====================================================================
+# 8. АВТО-ПОСТИНГ В КАНАЛ
 # ====================================================================
 POSTS_DB = [
     "✨ ИИ научился создавать 3D-миры. Скоро будем путешествовать по воображаемым городам.",
@@ -189,7 +222,7 @@ def channel_scheduler():
 threading.Thread(target=channel_scheduler, daemon=True).start()
 
 # ====================================================================
-# 8. ЖИВОЙ ИНТЕРЕС (бот пишет сам, если молчат больше 1,5 часов)
+# 9. ЖИВОЙ ИНТЕРЕС
 # ====================================================================
 last_msg_time = {}
 PING_INTERVAL = 5400  # 1.5 часа
@@ -212,14 +245,13 @@ def ping_loop():
                         last_msg_time[uid] = now
                 except:
                     pass
-        time.sleep(600)  # проверка каждые 10 минут
+        time.sleep(600)
 threading.Thread(target=ping_loop, daemon=True).start()
 
 # ====================================================================
-# 9. ОБРАБОТЧИКИ КОМАНД (включая мультимедиа)
+# 10. ОБРАБОТЧИКИ (с умным распознаванием)
 # ====================================================================
 
-# ---------- /start и /help ----------
 @bot.message_handler(commands=['start', 'help'])
 def cmd_start(message):
     last_msg_time[message.chat.id] = time.time()
@@ -243,16 +275,15 @@ def cmd_start(message):
 /sticker — отправлю случайный стикер
 /photo — отправлю случайное фото
 /gif — отправлю случайную гифку
+/pic <запрос> — найду и отправлю картинку по твоему запросу!
 
-📅 **Мой график:** Я автоматически публикую посты в канале в 09:00 и 21:00.
+📅 **Мой график:** Автоматические посты в канале в 09:00 и 21:00.
 
 ❤️ **Я забочусь о тебе:** если ты молчишь больше 1,5 часов — я сама напишу тебе, чтобы узнать, как дела!
 
-💎 **Работаю 24/7 без перебоев.** 
-Просто напиши мне что-нибудь, и мы начнём! 💋
+💎 **Работаю 24/7.** Просто напиши мне что-нибудь, и мы начнём! 💋
 """)
 
-# ---------- Команды ИИ (остаются как есть) ----------
 @bot.message_handler(commands=['plan', 'analyze', 'code', 'explain', 'design', 'motivate', 'translate', 'solve', 'write', 'brainstorm', 'logic', 'fun'])
 def cmd_ai_functions(message):
     try:
@@ -272,7 +303,6 @@ def cmd_ai_functions(message):
     except Exception as e:
         bot.reply_to(message, f"Ошибка: {e}")
 
-# ---------- Медиа-команды ----------
 @bot.message_handler(commands=['sticker'])
 def cmd_sticker(message):
     try:
@@ -303,7 +333,6 @@ def cmd_gif(message):
     except Exception as e:
         bot.reply_to(message, f"Не удалось отправить гифку: {e}")
 
-# ---------- Обработка обычных сообщений ----------
 @bot.message_handler(func=lambda m: True)
 def general_handler(message):
     try:
@@ -314,7 +343,7 @@ def general_handler(message):
             return
         general_handler.last_time = time.time()
 
-        # Обработка групп (только если упомянули бота)
+        # Группы: отвечаем только на упоминание
         if message.chat.type in ['group', 'supergroup']:
             if BOT_USERNAME not in message.text:
                 return
@@ -327,12 +356,46 @@ def general_handler(message):
         if user_text.startswith('/'):
             return
 
-        # Если сообщение содержит определённые слова, можно отправить стикер (эмоциональный отклик)
-        if any(word in user_text.lower() for word in ['спасибо', 'благодарю', '❤️', '♥️']):
+        # --- Умный анализатор без команд ---
+        lower = user_text.lower()
+        
+        # 1. Запрос на стикер
+        if any(word in lower for word in ['стикер', 'наклейку', 'sticker']):
+            if STICKERS:
+                sticker_id = random.choice(list(STICKERS.values()))
+                bot.send_sticker(message.chat.id, sticker_id)
+                return
+        
+        # 2. Запрос на картинку
+        if any(word in lower for word in ['картинку', 'фото', 'изображение', 'найди', 'picture', 'image']):
+            # Пытаемся извлечь тему
+            query = user_text.replace('картинку', '').replace('фото', '').replace('изображение', '').replace('найди', '').strip()
+            if not query:
+                query = 'красивая природа'
+            bot.send_chat_action(message.chat.id, 'upload_photo')
+            img_url = search_image(query)
+            if img_url:
+                bot.send_photo(message.chat.id, img_url, caption=f"✨ Вот картинка про «{query}»")
+            else:
+                bot.reply_to(message, "😔 Не удалось найти картинку по запросу. Попробуй другое слово.")
+            return
+        
+        # 3. Запрос на гифку
+        if any(word in lower for word in ['гифку', 'gif', 'gifку']):
+            if GIFS:
+                url = random.choice(GIFS)
+                bot.send_animation(message.chat.id, url)
+            else:
+                bot.reply_to(message, "У меня пока нет гифок.")
+            return
+
+        # 4. Спасибо → стикер благодарности
+        if any(word in lower for word in ['спасибо', 'благодарю', '❤️', '♥️']):
             if 'thanks' in STICKERS:
                 bot.send_sticker(message.chat.id, STICKERS['thanks'])
+            # продолжаем, чтобы ещё и текстом ответить
 
-        # Основной AI-ответ
+        # Всё остальное — в AI
         bot.send_chat_action(message.chat.id, 'typing')
         answer = ask_ai(user_text, get_history(message.from_user.id))
         bot.reply_to(message, answer)
@@ -341,13 +404,13 @@ def general_handler(message):
         print(f"⚠️ Ошибка в обработчике: {e}")
 
 # ====================================================================
-# 10. ЗАПУСК
+# 11. ЗАПУСК
 # ====================================================================
 if __name__ == "__main__":
     print("="*70)
-    print("💋 АУРА КВИНСИ v10.0 — МУЛЬТИМЕДИЙНЫЙ ФЛАГМАН")
-    print("🔥 20+ AI, OpenRouter, DeepSeek, Живой интерес, Стикеры, Фото, GIF.")
-    print("✅ Работает 24/7. Готов к бою!")
+    print("💋 АУРА КВИНСИ v10.2 — БЕЗКОМАНДНЫЙ ИНТЕЛЛЕКТ")
+    print("🔥 20+ AI, OpenRouter, DeepSeek, Живой интерес, Стикеры, Фото, GIF, /pic")
+    print("✅ Понимает естественный язык и сам решает, что делать!")
     print("="*70)
 
     while True:
