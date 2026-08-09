@@ -19,7 +19,7 @@ from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ============================================================
-# 1. КЛЮЧИ И НАСТРОЙКИ (Без изменений, подтягиваются из окружения)
+# 1. КЛЮЧИ И НАСТРОЙКИ
 # ============================================================
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
@@ -52,7 +52,7 @@ SUPER_PROMPT = """
 """
 
 # ============================================================
-# 3. БЕЗОПАСНОСТЬ И ХОК ЛИ (Анти-краш)
+# 3. БЕЗОПАСНОСТЬ И ХОК ЛИ
 # ============================================================
 class SystemKeeper:
     def __init__(self):
@@ -85,10 +85,6 @@ def get_history(user_id):
         user_history[user_id] = deque(maxlen=10)
     return user_history[user_id]
 
-def safe_markdown(text):
-    # Защита от ошибки 400 Telegram (кривые символы)
-    return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
-
 # ============================================================
 # 5. АРМИЯ 20+ ИИ
 # ============================================================
@@ -112,7 +108,7 @@ def request_deepseek(text, hist):
         if resp.status_code == 200:
             reply = resp.json()["choices"][0]["message"]["content"]
             hist.append({"role": "assistant", "content": reply})
-            return safe_markdown(reply), "DeepSeek AI"
+            return reply, "DeepSeek AI"
     except:
         pass
     return None, None
@@ -126,7 +122,7 @@ def request_free_ai(text, hist):
             result = future.result()
             if result:
                 hist.append({"role": "assistant", "content": result})
-                return safe_markdown(result), "Армия 20+ AI (Бесплатный прокси)"
+                return result, "Армия 20+ AI (Бесплатный прокси)"
     return None, None
 
 def _try_proxy(url, messages):
@@ -143,18 +139,16 @@ def _try_proxy(url, messages):
     return None
 
 def ask_ai(text, hist):
-    # Сначала DeepSeek
     reply, source = request_deepseek(text, hist)
     if reply:
         return reply, source
-    # Затем бесплатные прокси
     reply, source = request_free_ai(text, hist)
     if reply:
         return reply, source
     return "⚠️ Все интеллектуальные серверы перегружены. Попробуйте через минуту.", "Нет связи"
 
 # ============================================================
-# 6. КАЛЕНДАРЬ И БАЗА ПОСТОВ ДЛЯ КАНАЛА
+# 6. КАЛЕНДАРЬ И БАЗА ПОСТОВ
 # ============================================================
 POST_SCHEDULE = {
     9: "Утренний пост",
@@ -198,7 +192,7 @@ def channel_scheduler_loop():
         if now.minute == 0 and now.hour in PUBLISH_HOURS:
             if not last_posts_log or (time.time() - last_posts_log[-1]) > 3600:
                 publish_to_channel()
-        time.sleep(30)  # Проверка раз в 30 секунд
+        time.sleep(30)
 
 threading.Thread(target=channel_scheduler_loop, daemon=True).start()
 
@@ -275,7 +269,7 @@ def cmd_general(message):
         print(f"Ошибка: {e}")
 
 # ============================================================
-# 8. ЗАПУСК СИСТЕМЫ
+# 8. ЗАПУСК
 # ============================================================
 if __name__ == "__main__":
     print("=" * 60)
