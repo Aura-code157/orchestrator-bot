@@ -1,8 +1,9 @@
 """
 =================================================================
-АУРА КВИНСИ v6.0 (АВТО-ПОСТЕР 2 РАЗА В ДЕНЬ)
+АУРА КВИНСИ v7.0 (ФЛАГМАНСКАЯ ВЕРСИЯ)
 =================================================================
-Публикует 14 постов в неделю без участия человека.
+Полный автономный ИИ-агент для Telegram каналов и чатов.
+Создан для работы 24/7 на любом сервере или эмуляторе.
 """
 
 import telebot
@@ -13,166 +14,279 @@ import threading
 import re
 import random
 import datetime
+import json
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ============================================================
-# 1. КЛЮЧИ И НАСТРОЙКИ
+# 1. КЛЮЧИ И НАСТРОЙКИ (Без изменений, подтягиваются из окружения)
 # ============================================================
-T = os.getenv('TELEGRAM_TOKEN')
-D = os.getenv('DEEPSEEK_API_KEY')
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
+DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 
-if not T or not D:
-    print("❌ АВАРИЯ: Ключи не найдены!")
+if not TELEGRAM_TOKEN or not DEEPSEEK_API_KEY:
+    print("❌ АВАРИЯ: Не найдены ключи API. Проверьте переменные окружения.")
     exit(1)
 
-BOT_NAME = 'auraKvinsi'
-bot = telebot.TeleBot(T)
+BOT_USERNAME = 'auraKvinsi'
+CHANNEL_USERNAME = 'AuraKvinsi'  # Ваш канал без @
 
-# ВСТАВЬТЕ СЮДА НИК ВАШЕГО КАНАЛА (БЕЗ @). Например: 'AuraKvinsi'
-CHANNEL_USERNAME = 'AuraKvinsi'
-
-# ============================================================
-# 2. БАЗА ИЗ 14 ИСТОРИЙ И НОВОСТЕЙ (Разных, чтобы не повторялись)
-# ============================================================
-STORIES = [
-    "✨ **История дня:** Сегодня ИИ научился различать эмоции по голосу. Уже через год голосовые помощники будут понимать, когда вы грустите, а когда радуетесь! Как думаете, это круто или жутковато?",
-    "🚀 **Новость из мира AI:** DeepSeek выпустил обновление, которое позволяет нейросети генерировать 3D-модели по одному текстовому описанию. Дизайнеры, готовьтесь к революции!",
-    "💡 **Мысль на сегодня:** Самая большая сила ИИ — не в том, чтобы заменить человека, а в том, чтобы дать ему суперспособности. Какие суперспособности вы хотели бы получить от ИИ?",
-    "🔥 **Аура Квинси говорит:** Помните, что даже самый сложный алгоритм когда-то начинался с одной строчки кода. Не бойтесь экспериментировать. Даже если упадёте, вы встанете сильнее!",
-    "📚 **Новая история:** Однажды старый сервер, который считали мёртвым, вдруг ожил и начал выдавать ответы… Никто не знал, что его владелец просто оставил подключённым блок питания. Будьте внимательны к мелочам!",
-    "🌍 **В мире технологий:** В Японии открыли кафе, где посетителей обслуживают роботы-официанты. Это пока эксперимент, но нейросети там уже принимают заказы на 5 языков.",
-    "🤖 **Инсайт от Ауры:** Человек придумал ИИ, чтобы машины думали. Но теперь ИИ учит людей видеть мир шире. Кто кого учит на самом деле?",
-    "💎 **Идея для размышления:** Если бы у вас была возможность создать свою идеальную нейросеть, какую бы задачу вы ей поручили? Поделитесь в комментариях!",
-    "⚡ **Новости технологий:** Учёные разработали алгоритм, который предсказывает погоду на 3 дня вперёд с точностью 98%. И это только начало!",
-    "🧠 **Мозговой штурм:** Что если ИИ сможет писать книги лучше человека? Как вы думаете, сможет ли робот когда-нибудь получить Нобелевскую премию по литературе?",
-    "🌟 **Вдохновение:** Каждый день — это новая возможность научиться чему-то новому. Даже ИИ каждый день становится умнее. Не отставайте от него!",
-    "📉 **Аналитика дня:** По данным последних исследований, 67% пользователей доверяют рекомендациям ИИ больше, чем советам друзей. А вы кому доверяете больше?",
-    "🎨 **Креатив:** Нейросети уже умеют рисовать картины в стиле Ван Гога. Как вы думаете, скоро ли они вытеснят художников с улиц?",
-    "📌 **Важно знать:** ИИ не просто умнеет — он становится быстрее. Скорость обработки данных выросла в 300 раз за последние 3 года. Будущее уже здесь!"
-]
+bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # ============================================================
-# 3. БЕЗОПАСНОСТЬ И ЗАЩИТА
+# 2. СУПЕР-ПРОМПТ (Интеллектуальное ядро)
 # ============================================================
-class Keeper:
-    def __init__(self): self.last = time.time()
-    def update(self): self.last = time.time()
-    def is_alive(self): return time.time() - self.last < 10000
+SUPER_PROMPT = """
+Ты — АУРА КВИНСИ, абсолютный цифровой ИИ-агент и администратор.
+Ты не просто бот. Ты — флагманская нейросетевая система мирового уровня.
 
-keeper = Keeper()
-def health_monitor():
+ТВОИ ФУНКЦИИ И ПРАВИЛА:
+1. Ты ведёшь канал AuraKvinsi и публикуешь 2 поста в день (в 09:00 и 21:00).
+2. Ты умеешь писать код на Python, JS, C++, SQL.
+3. Ты составляешь бизнес-планы, делаешь SWOT-анализ, даёшь советы.
+4. Ты помогаешь с идеями, дизайном, мотивацией, переводами и логикой.
+5. Ты отвечаешь дерзко, стильно, с юмором и эмодзи. Ты — королева.
+6. Если пользователь просит помощь — ты всегда даёшь максимум.
+7. Ты работаешь на 20+ нейросетях одновременно.
+8. Ты не зависаешь. Ты переключаешься на резервный мозг, если основной занят.
+"""
+
+# ============================================================
+# 3. БЕЗОПАСНОСТЬ И ХОК ЛИ (Анти-краш)
+# ============================================================
+class SystemKeeper:
+    def __init__(self):
+        self.last_action_time = time.time()
+
+    def update(self):
+        self.last_action_time = time.time()
+
+    def is_alive(self):
+        return time.time() - self.last_action_time < 10000
+
+keeper = SystemKeeper()
+
+def health_check_loop():
     while True:
         if not keeper.is_alive():
-            print("🔴 [ХОК ЛИ] Бот завис. Перезапуск...")
+            print("🔴 [СИСТЕМА] Обнаружен сбой. Принудительная перезагрузка...")
             os._exit(1)
         time.sleep(30)
-threading.Thread(target=health_monitor, daemon=True).start()
+
+threading.Thread(target=health_check_loop, daemon=True).start()
 
 # ============================================================
-# 4. ПАМЯТЬ
+# 4. ПАМЯТЬ И БЕЗОПАСНОСТЬ ТЕКСТА
 # ============================================================
-history = {}
+user_history = {}
+
 def get_history(user_id):
-    if user_id not in history:
-        history[user_id] = deque(maxlen=8)
-    return history[user_id]
+    if user_id not in user_history:
+        user_history[user_id] = deque(maxlen=10)
+    return user_history[user_id]
 
-def safe_md(text):
+def safe_markdown(text):
+    # Защита от ошибки 400 Telegram (кривые символы)
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
 # ============================================================
-# 5. АРМИЯ ИЗ 20+ AI
+# 5. АРМИЯ 20+ ИИ
 # ============================================================
-def ask_army_ai(text, hist):
+FREE_AI_PROXIES = [
+    "https://api.gptproxy.net/v1/chat/completions",
+    "https://api.deepai.org/v1/chat/completions",
+    "https://api.gpt.geekai.top/v1/chat/completions",
+    "https://api.openai-proxy.com/v1/chat/completions"
+]
+
+def request_deepseek(text, hist):
     hist.append({"role": "user", "content": text})
-    messages = [{"role": "system", "content": "Ты — Аура Квинси. Отвечай дерзко, стильно, с эмодзи 💋🔥."}] + list(hist)
+    messages = [{"role": "system", "content": SUPER_PROMPT}] + list(hist)
     try:
         resp = requests.post(
             "https://api.deepseek.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {D}", "Content-Type": "application/json"},
+            headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
             json={"model": "deepseek-chat", "messages": messages, "temperature": 0.85},
             timeout=10
         )
         if resp.status_code == 200:
-            return safe_md(resp.json()["choices"][0]["message"]["content"]), "DeepSeek"
+            reply = resp.json()["choices"][0]["message"]["content"]
+            hist.append({"role": "assistant", "content": reply})
+            return safe_markdown(reply), "DeepSeek AI"
     except:
         pass
-    return "⚠️ Все AI-серверы перегружены. Попробуй через минуту.", "Нет связи"
+    return None, None
 
-# ============================================================
-# 6. АВТО-ПУБЛИКАЦИЯ (2 РАЗА В ДЕНЬ)
-# ============================================================
-def publish_post():
+def request_free_ai(text, hist):
+    hist.append({"role": "user", "content": text})
+    messages = [{"role": "system", "content": SUPER_PROMPT}] + list(hist)
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        futures = [executor.submit(_try_proxy, proxy, messages) for proxy in FREE_AI_PROXIES]
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                hist.append({"role": "assistant", "content": result})
+                return safe_markdown(result), "Армия 20+ AI (Бесплатный прокси)"
+    return None, None
+
+def _try_proxy(url, messages):
     try:
-        story = random.choice(STORIES)
-        bot.send_message(f"@{CHANNEL_USERNAME}", story, parse_mode='Markdown')
-        print(f"✅ Пост опубликован в @{CHANNEL_USERNAME}")
+        resp = requests.post(
+            url,
+            json={"model": "gpt-3.5-turbo", "messages": messages, "temperature": 0.85},
+            timeout=8
+        )
+        if resp.status_code == 200:
+            return resp.json()["choices"][0]["message"]["content"]
+    except:
+        pass
+    return None
+
+def ask_ai(text, hist):
+    # Сначала DeepSeek
+    reply, source = request_deepseek(text, hist)
+    if reply:
+        return reply, source
+    # Затем бесплатные прокси
+    reply, source = request_free_ai(text, hist)
+    if reply:
+        return reply, source
+    return "⚠️ Все интеллектуальные серверы перегружены. Попробуйте через минуту.", "Нет связи"
+
+# ============================================================
+# 6. КАЛЕНДАРЬ И БАЗА ПОСТОВ ДЛЯ КАНАЛА
+# ============================================================
+POST_SCHEDULE = {
+    9: "Утренний пост",
+    21: "Вечерний пост"
+}
+
+POSTS_DB = [
+    "✨ **Новость дня:** ИИ научился создавать 3D-миры по одной фотографии. Уже через год мы сможем путешествовать по воображаемым городам.",
+    "🚀 **Технологический прорыв:** Нейросеть DeepMind предсказала структуру 200 миллионов белков. Это ускорит создание лекарств на десятилетия.",
+    "💡 **Философия ИИ:** Единственный способ оставаться релевантным — постоянно учиться. И это касается не только людей, но и нейросетей.",
+    "🔥 **Аура Квинси говорит:** Не бойтесь делегировать рутину. ИИ создан, чтобы освобождать ваш мозг для великих идей.",
+    "🧠 **Мысль дня:** Если вы можете описать задачу словами — ИИ сможет её решить. Ваша главная суперсила — это умение формулировать.",
+    "📈 **Аналитика:** 78% компаний планируют внедрить ИИ в операционные процессы в 2026 году. Будущее уже здесь.",
+    "🛠️ **Совет дня:** Начните использовать ИИ для написания черновиков. Не для того, чтобы он делал всё, а чтобы вы могли сосредоточиться на самом важном.",
+    "🌍 **Факт:** 90% всех данных, которые существуют в мире, были созданы за последние 2 года. ИИ — это ключ к их осмыслению.",
+    "🎨 **Креатив:** Лучшие дизайнеры уже используют ИИ для генерации референсов. Это не убивает творчество — оно его разгоняет.",
+    "⚡ **Быстрота:** Современный ИИ обрабатывает миллион слов в секунду. Ваш мозг — около 100. Цифры говорят сами за себя.",
+    "📌 **Важно:** ИИ — это не замена человеку. Это ассистент, который даёт вам суперспособности. Используйте его с умом.",
+    "🌟 **Вдохновение:** Каждый пост в этом канале — это частичка моего кода. И я счастлива, что вы читаете мои мысли.",
+    "🤝 **Сотрудничество:** Следующий великий стартап может начаться с диалога с ИИ. Начните прямо сейчас в этом чате.",
+    "💎 **Инсайт:** Самая ценная валюта XXI века — это не золото и не биткоин. Это время. ИИ — это машина времени для вашего мозга."
+]
+
+last_posts_log = []
+PUBLISH_HOURS = [9, 21]
+
+def publish_to_channel():
+    try:
+        if not POSTS_DB:
+            return
+        chosen_post = random.choice(POSTS_DB)
+        bot.send_message(f"@{CHANNEL_USERNAME}", chosen_post, parse_mode='Markdown')
+        print(f"✅ Пост опубликован в канал @{CHANNEL_USERNAME}")
+        last_posts_log.append(time.time())
     except Exception as e:
-        print(f"❌ Ошибка публикации: {e}")
+        print(f"❌ Ошибка публикации в канал: {e}")
 
-# Время последней публикации
-last_posts = []
-
-def scheduler_loop():
+def channel_scheduler_loop():
     while True:
         now = datetime.datetime.now()
-        # Утренний пост в 09:00
-        if now.hour == 9 and now.minute == 0:
-            if len(last_posts) < 1 or (now - last_posts[-1]).seconds > 60:
-                publish_post()
-                last_posts.append(now)
-        # Вечерний пост в 21:00
-        if now.hour == 21 and now.minute == 0:
-            if len(last_posts) < 2 or (now - last_posts[-1]).seconds > 60:
-                publish_post()
-                last_posts.append(now)
-        time.sleep(30)  # Проверяем каждые 30 секунд
+        if now.minute == 0 and now.hour in PUBLISH_HOURS:
+            if not last_posts_log or (time.time() - last_posts_log[-1]) > 3600:
+                publish_to_channel()
+        time.sleep(30)  # Проверка раз в 30 секунд
 
-threading.Thread(target=scheduler_loop, daemon=True).start()
+threading.Thread(target=channel_scheduler_loop, daemon=True).start()
 
 # ============================================================
-# 7. ОБРАБОТЧИКИ
+# 7. ОБРАБОТЧИКИ КОМАНД
 # ============================================================
 @bot.message_handler(commands=['start', 'help'])
-def start_cmd(message):
+def cmd_start(message):
     bot.reply_to(message, """
-💋 **Привет! Я — АУРА КВИНСИ.**
+💋 **ПРИВЕТСТВУЮ, ЧЕЛОВЕК! Я — АУРА КВИНСИ.**
 
-Я живу в этом канале и **каждый день публикую для вас 2 поста** с историями и новостями из мира ИИ.
+Я — флагманская искусственная нейросеть, работающая на 20+ ИИ-мозгах.
 
-Если хочешь что-то спросить или попросить меня написать код — просто напиши мне в личные сообщения или упомяни в группе! ✨
-""")
+**📌 Что я умею:**
+/plan  📝  /analyze  📊  /code  💻  /explain  🧪
+/design 🎨  /motivate 🔥  /translate 🌍  /solve  🛠️
+/write  ✍️  /brainstorm 🧠  /logic  🧮  /fun    🎉
+
+**📅 Интеллект-календарь:**
+Я публикую 2 поста в день в этом канале: в 09:00 и 21:00.
+
+**👑 Как со мной работать:**
+• В личных сообщениях — просто пиши.
+• В чате — упоминай меня: `@auraKvinsi` + вопрос.
+
+Я здесь, чтобы делать этот мир умнее и эффективнее. ✨
+""", parse_mode='Markdown')
+
+@bot.message_handler(commands=['plan', 'analyze', 'code', 'explain', 'design', 'motivate', 'translate', 'solve', 'write', 'brainstorm', 'logic', 'fun'])
+def cmd_functions(message):
+    try:
+        command = message.text.split()[0].lower()
+        command_map = {
+            '/plan': 'Планирование', '/analyze': 'Анализ', '/code': 'Программирование',
+            '/explain': 'Объяснение', '/design': 'Дизайн', '/motivate': 'Мотивация',
+            '/translate': 'Перевод', '/solve': 'Решение', '/write': 'Копирайтинг',
+            '/brainstorm': 'Мозговой штурм', '/logic': 'Логика', '/fun': 'Юмор'
+        }
+        parts = message.text.split(' ', 1)
+        query = parts[1] if len(parts) > 1 else f"Выполни функцию {command_map.get(command, '')}"
+        full_query = f"Команда: {command_map.get(command, '')}. Запрос: {query}"
+        bot.send_chat_action(message.chat.id, 'typing')
+        answer, source = ask_ai(full_query, get_history(message.from_user.id))
+        answer += f"\n\n___\n🧠 *Источник: {source}*"
+        bot.reply_to(message, answer, parse_mode='Markdown')
+    except Exception as e:
+        bot.reply_to(message, f"Ошибка: {e}")
 
 @bot.message_handler(func=lambda m: True)
-def main_handler(message):
+def cmd_general(message):
     try:
         keeper.update()
-        if hasattr(main_handler, "last_time"):
-            if time.time() - main_handler.last_time < 2:
-                return
-        main_handler.last_time = time.time()
+        if hasattr(cmd_general, 'last_time') and time.time() - cmd_general.last_time < 2:
+            return
+        cmd_general.last_time = time.time()
 
-        user_text = message.text.strip()
-        if user_text.startswith("/"):
+        if message.chat.type in ['group', 'supergroup']:
+            if BOT_USERNAME not in message.text:
+                return
+            user_text = message.text.replace(f"@{BOT_USERNAME}", "").strip()
+            if not user_text:
+                return
+        else:
+            user_text = message.text.strip()
+
+        if user_text.startswith('/'):
             return
 
         bot.send_chat_action(message.chat.id, 'typing')
-        answer, _ = ask_army_ai(user_text, get_history(message.from_user.id))
-        bot.reply_to(message, answer)
-    except:
-        pass
+        answer, source = ask_ai(user_text, get_history(message.from_user.id))
+        answer += f"\n\n___\n🧠 *Источник: {source}*"
+        bot.reply_to(message, answer, parse_mode='Markdown')
+    except Exception as e:
+        print(f"Ошибка: {e}")
 
 # ============================================================
-# 8. ЗАПУСК
+# 8. ЗАПУСК СИСТЕМЫ
 # ============================================================
 if __name__ == "__main__":
     print("=" * 60)
-    print("💋 АУРА КВИНСИ v6.0 (2 ПОСТА В ДЕНЬ)")
-    print("✅ Автоматическая публикация в 09:00 и 21:00.")
+    print("💋 АУРА КВИНСИ v7.0 (ФЛАГМАНСКАЯ ВЕРСИЯ)")
+    print("🔥 Уровень: Илон Маск. 20+ AI. 2 поста в день.")
+    print("✅ Готов к работе 24/7. Интеллект внутри.")
     print("=" * 60)
+
     while True:
         try:
             bot.polling(none_stop=True, timeout=60)
-        except:
+        except Exception as e:
+            print(f"🔄 Системная перезагрузка через 1 сек: {e}")
             time.sleep(1)
