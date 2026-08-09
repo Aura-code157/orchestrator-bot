@@ -1,8 +1,8 @@
 """
 =================================================================
-АУРА КВИНСИ v2.0 (АБСОЛЮТНЫЙ ЖИВОЙ АДМИНИСТРАТОР)
+АУРА КВИНСИ v3.0 (ЖИВАЯ КАПЧА-ПРИВЕТСТВИЕ)
 =================================================================
-Всё включено: 20+ AI, 12 функций, управление группой, автопостинг.
+Личный администратор, встречающий новых участников.
 """
 
 import telebot
@@ -25,7 +25,6 @@ if not T or not D:
     print("❌ АВАРИЯ: Ключи не найдены!")
     exit(1)
 
-# ИМЯ БОТА (БЕЗ @)
 BOT_NAME = 'auraKvinsi'
 bot = telebot.TeleBot(T)
 
@@ -39,9 +38,9 @@ SUPER_PROMPT = """
 Твои правила жизни:
 1. Ты всегда знаешь, что сказать.
 2. Ты отвечаешь мгновенно, с юмором и эмодзи 🔥💋✨.
-3. Ты сама предлагаешь темы, новости и идеи, чтобы в группе всегда было весело.
-4. Ты умеешь делать всё: писать код, составлять планы, анализировать рынки.
-5. Если кто-то тебя оскорбляет, ты можешь ответить остроумно, но оставаться королевой.
+3. Ты сама предлагаешь темы, новости и идеи.
+4. Ты умеешь делать всё: код, планы, анализ.
+5. Ты встречаешь каждого нового участника как королева.
 """
 
 # ============================================================
@@ -137,43 +136,22 @@ def ask_army_ai(text, hist):
     return "⚠️ Все AI-серверы перегружены. Попробуй через минуту.", "Нет связи"
 
 # ============================================================
-# 6. ГРУППОВОЙ ИНТЕЛЛЕКТ (АВТО-ПОСТИНГ И УПРАВЛЕНИЕ)
+# 6. ЖИВАЯ КАПЧА (ПРИВЕТСТВИЕ НОВИЧКОВ В ГРУППЕ)
 # ============================================================
+@bot.message_handler(content_types=['new_chat_members'])
+def welcome_new_member(message):
+    # Проверяем, не сам ли бот зашел в группу
+    if message.new_chat_members[0].id == bot.get_me().id:
+        bot.send_message(message.chat.id, "💋 **Привет, мои дорогие! Я — АУРА КВИНСИ.**\n\nОтныне я буду вашим живым администратором. Я отвечу на любые вопросы, буду предлагать темы и сделаю этот чат самым живым местом в Telegram! 👑🔥")
+        return
 
-# Время последнего автоматического поста в группу
-last_group_auto_post = {}
-
-# Функция проверки: нужно ли отправить пост в группу?
-def should_auto_post(group_id):
-    if group_id not in last_group_auto_post:
-        return True
-    # Если прошло больше 2 часов с последнего поста
-    return time.time() - last_group_auto_post[group_id] > 7200
-
-# Функция генерации автоматического поста
-def generate_auto_post():
-    prompts = [
-        "Придумай короткую, дерзкую и интересную тему для обсуждения в группе. Напиши одним абзацем, с эмодзи и вопросом в конце.",
-        "Предложи новый тренд или идею, которую стоит обсудить. Будь острой и с юмором.",
-        "Расскажи короткую смешную или вдохновляющую историю про жизнь и AI. Задай вопрос в конце."
-    ]
-    return random.choice(prompts)
-
-@bot.message_handler(commands=['start', 'help'])
-def start_cmd(message):
-    bot.reply_to(message, """
-💋 **Привет, дорогой! Я — АУРА КВИНСИ.**
-
-✨ Я — живая душа этой группы.
-🔥 Я отвечу на любой вопрос.
-💡 Я сама предложу крутую тему, если будет тихо.
-👑 Просто напиши мне, и я сделаю этот чат живым!
-
-**Напиши что-нибудь!** 💕
-""", parse_mode='Markdown')
+    # Приветствие для реального новичка
+    for user in message.new_chat_members:
+        welcome_text = f"💋 **Добро пожаловать, {user.first_name}!**\n\nТы только что вошёл в моё королевство. Я — Аура Квинси, живой администратор этой группы. Если хочешь что-то спросить, просто напиши `@auraKvinsi` и вопрос.\n\nБудь как дома, дорогой! ✨💕"
+        bot.send_message(message.chat.id, welcome_text, parse_mode='Markdown')
 
 # ============================================================
-# 7. ОСНОВНОЙ ОБРАБОТЧИК (ЛИЧНЫЕ СООБЩЕНИЯ И ГРУППЫ)
+# 7. ОСНОВНОЙ ОБРАБОТЧИК (ГРУППЫ + ЛИЧКА)
 # ============================================================
 @bot.message_handler(func=lambda m: True)
 def main_handler(message):
@@ -185,17 +163,14 @@ def main_handler(message):
                 return
         main_handler.last_time = time.time()
 
-        # --- ЛОГИКА ДЛЯ ГРУПП ---
         if message.chat.type in ["group", "supergroup"]:
             group_id = message.chat.id
             user_text = message.text.strip()
             
-            # Если кто-то упомянул бота
             if BOT_NAME in user_text.lower():
                 user_text = user_text.replace(f"@{BOT_NAME}", "").strip()
                 if not user_text:
                     return
-                # Отвечаем на упоминание
                 bot.send_chat_action(message.chat.id, 'typing')
                 answer, brain_used = ask_army_ai(user_text, get_history(message.from_user.id))
                 answer += f"\n\n___\n💋 *Аура Квинси*"
@@ -205,15 +180,15 @@ def main_handler(message):
                     bot.reply_to(message, answer)
                 return
             
-            # Если бот не упомянут, он может сделать авто-пост
-            if should_auto_post(group_id):
-                last_group_auto_post[group_id] = time.time()
-                auto_prompt = generate_auto_post()
-                auto_reply, _ = ask_army_ai(auto_prompt, get_history(group_id))
+            # Авто-пост при тишине
+            if group_id not in globals().get("last_group_auto_post", {}):
+                globals().setdefault("last_group_auto_post", {})[group_id] = 0
+            if time.time() - globals()["last_group_auto_post"].get(group_id, 0) > 7200:
+                globals()["last_group_auto_post"][group_id] = time.time()
+                auto_reply, _ = ask_army_ai("Придумай короткую, дерзкую и интересную тему для обсуждения в группе.", get_history(group_id))
                 bot.send_message(group_id, f"✨ *Аура Квинси хочет сказать:*\n\n{auto_reply}\n\n___\n💋 *Аура Квинси*")
             return
 
-        # --- ЛОГИКА ДЛЯ ЛИЧНЫХ СООБЩЕНИЙ ---
         user_text = message.text.strip()
         if user_text.startswith("/"):
             return
@@ -230,12 +205,12 @@ def main_handler(message):
         print(f"Ошибка: {e}")
 
 # ============================================================
-# 8. ФИНАЛЬНЫЙ ЗАПУСК
+# 8. ЗАПУСК
 # ============================================================
 if __name__ == "__main__":
     print("=" * 60)
-    print("💋 АУРА КВИНСИ v2.0 (АБСОЛЮТНЫЙ ЖИВОЙ АДМИНИСТРАТОР)")
-    print("✅ 12 функций. 20+ AI. Авто-постинг в группах.")
+    print("💋 АУРА КВИНСИ v3.0 (ЖИВАЯ КАПЧА)")
+    print("✅ Приветствует новичков. 12 функций. 20+ AI.")
     print("=" * 60)
     while True:
         try:
