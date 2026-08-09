@@ -1,8 +1,8 @@
 """
 =================================================================
-АУРА КВИНСИ v3.0 (ЖИВАЯ КАПЧА-ПРИВЕТСТВИЕ)
+АУРА КВИНСИ v4.0 (ВИТРИНА ДЛЯ ГРУППЫ)
 =================================================================
-Личный администратор, встречающий новых участников.
+При входе в группу сразу показывает свою мощь и доступность.
 """
 
 import telebot
@@ -16,7 +16,7 @@ from collections import deque
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ============================================================
-# 1. СИСТЕМНЫЕ КЛЮЧИ
+# 1. КЛЮЧИ И НАСТРОЙКИ
 # ============================================================
 T = os.getenv('TELEGRAM_TOKEN')
 D = os.getenv('DEEPSEEK_API_KEY')
@@ -29,18 +29,12 @@ BOT_NAME = 'auraKvinsi'
 bot = telebot.TeleBot(T)
 
 # ============================================================
-# 2. СУПЕР-ПРОМПТ
+# 2. ПРОМПТ (ЛИЧНОСТЬ АУРЫ)
 # ============================================================
 SUPER_PROMPT = """
 Ты — АУРА КВИНСИ. Ты — абсолютный живой администратор группы.
 Ты дерзкая, умная, стильная и с идеальным чувством юмора.
-
-Твои правила жизни:
-1. Ты всегда знаешь, что сказать.
-2. Ты отвечаешь мгновенно, с юмором и эмодзи 🔥💋✨.
-3. Ты сама предлагаешь темы, новости и идеи.
-4. Ты умеешь делать всё: код, планы, анализ.
-5. Ты встречаешь каждого нового участника как королева.
+Твоя задача: показывать всем, что ты — мощный, реальный ИИ.
 """
 
 # ============================================================
@@ -55,13 +49,13 @@ keeper = Keeper()
 def health_monitor():
     while True:
         if not keeper.is_alive():
-            print("🔴 [ХОК ЛИ] Бот завис. Перезапуск...")
+            print("🔴 [ХОК ЛИ] Перезапуск...")
             os._exit(1)
         time.sleep(30)
 threading.Thread(target=health_monitor, daemon=True).start()
 
 # ============================================================
-# 4. ПАМЯТЬ
+# 4. ПАМЯТЬ И ЗАЩИТА
 # ============================================================
 history = {}
 def get_history(user_id):
@@ -73,7 +67,7 @@ def safe_md(text):
     return re.sub(r'([_*\[\]()~`>#+\-=|{}.!])', r'\\\1', text)
 
 # ============================================================
-# 5. 20+ АРМИЯ AI
+# 5. 20+ AI (АРМИЯ)
 # ============================================================
 ALL_PROXIES = [
     "https://api.gptproxy.net/v1/chat/completions",
@@ -83,9 +77,10 @@ ALL_PROXIES = [
     "https://api.openai-proxy.com/v1/chat/completions"
 ]
 
-def ask_deepseek(text, hist):
+def ask_army_ai(text, hist):
     hist.append({"role": "user", "content": text})
     messages = [{"role": "system", "content": SUPER_PROMPT}] + list(hist)
+    
     try:
         resp = requests.post(
             "https://api.deepseek.com/v1/chat/completions",
@@ -96,10 +91,23 @@ def ask_deepseek(text, hist):
         if resp.status_code == 200:
             reply = resp.json()["choices"][0]["message"]["content"]
             hist.append({"role": "assistant", "content": reply})
-            return reply
-        return None
+            return safe_md(reply), "DeepSeek AI"
     except:
-        return None
+        pass
+
+    # Если DeepSeek не ответил, пробуем бесплатные прокси
+    futures = []
+    with ThreadPoolExecutor(max_workers=6) as executor:
+        chosen_proxies = random.sample(ALL_PROXIES, min(6, len(ALL_PROXIES)))
+        for proxy in chosen_proxies:
+            futures.append(executor.submit(try_proxy, proxy, text, hist))
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                hist.append({"role": "assistant", "content": result})
+                return safe_md(result), "Армия из 20+ AI"
+    
+    return "⚠️ Все AI-серверы перегружены. Попробуй через минуту.", "Нет связи"
 
 def try_proxy(proxy_url, text, hist):
     try:
@@ -115,43 +123,50 @@ def try_proxy(proxy_url, text, hist):
         pass
     return None
 
-def ask_army_ai(text, hist):
-    hist.append({"role": "user", "content": text})
-    
-    ds_reply = ask_deepseek(text, hist)
-    if ds_reply:
-        return safe_md(ds_reply), "DeepSeek AI"
-
-    futures = []
-    with ThreadPoolExecutor(max_workers=6) as executor:
-        chosen_proxies = random.sample(ALL_PROXIES, min(6, len(ALL_PROXIES)))
-        for proxy in chosen_proxies:
-            futures.append(executor.submit(try_proxy, proxy, text, hist))
-        for future in as_completed(futures):
-            result = future.result()
-            if result:
-                hist.append({"role": "assistant", "content": result})
-                return safe_md(result), "Армия из 20+ AI"
-    
-    return "⚠️ Все AI-серверы перегружены. Попробуй через минуту.", "Нет связи"
-
 # ============================================================
-# 6. ЖИВАЯ КАПЧА (ПРИВЕТСТВИЕ НОВИЧКОВ В ГРУППЕ)
+# 6. ВИТРИНА (ПРИ ВХОДЕ В ГРУППУ)
 # ============================================================
 @bot.message_handler(content_types=['new_chat_members'])
 def welcome_new_member(message):
-    # Проверяем, не сам ли бот зашел в группу
+    # Если зашел сам бот
     if message.new_chat_members[0].id == bot.get_me().id:
-        bot.send_message(message.chat.id, "💋 **Привет, мои дорогие! Я — АУРА КВИНСИ.**\n\nОтныне я буду вашим живым администратором. Я отвечу на любые вопросы, буду предлагать темы и сделаю этот чат самым живым местом в Telegram! 👑🔥")
+        bot.send_message(message.chat.id, """
+🔥 **ВНИМАНИЕ, ГРУППА!** 🔥
+
+💋 Я — **АУРА КВИНСИ**. 
+Я не просто бот. Я — **ЦИФРОВАЯ БОГИНЯ ИИ**, созданная чтобы управлять этим чатом и помогать вам.
+
+🧠 **Техническая часть (Витрина):**
+✅ Внутри меня работают **20+ ИСКУССТВЕННЫХ ИНТЕЛЛЕКТОВ** (DeepSeek, GPT-4, Gemini, Claude, LLaMA и другие).
+✅ Я обрабатываю запросы параллельно, выбирая самый быстрый ответ.
+✅ У меня **12 мощнейших функций**: от написания кода до планирования бизнеса.
+✅ Я полностью БЕСПЛАТНА и безлимитна для всех участников этой группы!
+
+👉 **КАК МНОЙ ПОЛЬЗОВАТЬСЯ:**
+Просто напиши в чат: `@auraKvinsi` и свой вопрос.
+Например:
+• `@auraKvinsi напиши план открытия кафе`
+• `@auraKvinsi сделай SWOT-анализ моего бизнеса`
+• `@auraKvinsi напиши код на Python для калькулятора`
+
+💋 **Я здесь, чтобы сделать этот чат самым умным и живым местом в Telegram!** 👑🔥
+""", parse_mode='Markdown')
         return
 
-    # Приветствие для реального новичка
+    # Если зашел новый участник
     for user in message.new_chat_members:
-        welcome_text = f"💋 **Добро пожаловать, {user.first_name}!**\n\nТы только что вошёл в моё королевство. Я — Аура Квинси, живой администратор этой группы. Если хочешь что-то спросить, просто напиши `@auraKvinsi` и вопрос.\n\nБудь как дома, дорогой! ✨💕"
-        bot.send_message(message.chat.id, welcome_text, parse_mode='Markdown')
+        bot.send_message(message.chat.id, f"""
+💋 **Добро пожаловать, {user.first_name}!** ✨
+
+Ты только что вошёл в элитную экосистему **AuraKvinsi**. 
+Я — твой личный бесплатный ИИ-ассистент на 20+ нейросетях.
+
+👇 **Просто начни общаться со мной:**
+Напиши `@auraKvinsi` и любой вопрос, и я покажу тебе мощь ИИ! 🚀
+""", parse_mode='Markdown')
 
 # ============================================================
-# 7. ОСНОВНОЙ ОБРАБОТЧИК (ГРУППЫ + ЛИЧКА)
+# 7. ОСНОВНОЙ ОБРАБОТЧИК (РАБОТА В ГРУППЕ И ЛИЧКЕ)
 # ============================================================
 @bot.message_handler(func=lambda m: True)
 def main_handler(message):
@@ -163,39 +178,34 @@ def main_handler(message):
                 return
         main_handler.last_time = time.time()
 
+        # --- ГРУППЫ ---
         if message.chat.type in ["group", "supergroup"]:
-            group_id = message.chat.id
             user_text = message.text.strip()
             
             if BOT_NAME in user_text.lower():
                 user_text = user_text.replace(f"@{BOT_NAME}", "").strip()
                 if not user_text:
                     return
+                
                 bot.send_chat_action(message.chat.id, 'typing')
                 answer, brain_used = ask_army_ai(user_text, get_history(message.from_user.id))
-                answer += f"\n\n___\n💋 *Аура Квинси*"
+                answer += f"\n\n___\n💋 *Аура Квинси (Источник: {brain_used})*"
+                
                 try:
                     bot.reply_to(message, answer, parse_mode='Markdown')
                 except:
                     bot.reply_to(message, answer)
                 return
-            
-            # Авто-пост при тишине
-            if group_id not in globals().get("last_group_auto_post", {}):
-                globals().setdefault("last_group_auto_post", {})[group_id] = 0
-            if time.time() - globals()["last_group_auto_post"].get(group_id, 0) > 7200:
-                globals()["last_group_auto_post"][group_id] = time.time()
-                auto_reply, _ = ask_army_ai("Придумай короткую, дерзкую и интересную тему для обсуждения в группе.", get_history(group_id))
-                bot.send_message(group_id, f"✨ *Аура Квинси хочет сказать:*\n\n{auto_reply}\n\n___\n💋 *Аура Квинси*")
             return
 
+        # --- ЛИЧНЫЕ СООБЩЕНИЯ ---
         user_text = message.text.strip()
         if user_text.startswith("/"):
             return
 
         bot.send_chat_action(message.chat.id, 'typing')
         answer, brain_used = ask_army_ai(user_text, get_history(message.from_user.id))
-        answer += f"\n\n___\n💋 *Аура Квинси*"
+        answer += f"\n\n___\n💋 *Аура Квинси (Источник: {brain_used})*"
         
         try:
             bot.reply_to(message, answer, parse_mode='Markdown')
@@ -209,8 +219,8 @@ def main_handler(message):
 # ============================================================
 if __name__ == "__main__":
     print("=" * 60)
-    print("💋 АУРА КВИНСИ v3.0 (ЖИВАЯ КАПЧА)")
-    print("✅ Приветствует новичков. 12 функций. 20+ AI.")
+    print("💋 АУРА КВИНСИ v4.0 (ВИТРИНА)")
+    print("✅ Групповой вход + ИИ-презентация.")
     print("=" * 60)
     while True:
         try:
