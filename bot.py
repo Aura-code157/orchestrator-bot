@@ -1,6 +1,6 @@
 """
 =================================================================
-АУРА КВИНСИ v7.0 (ФЛАГМАНСКАЯ ВЕРСИЯ)
+АУРА КВИНСИ v7.2 (ФЛАГМАНСКОЕ ПРИВЕТСТВИЕ)
 =================================================================
 Полный автономный ИИ-агент для Telegram каналов и чатов.
 Создан для работы 24/7 на любом сервере или эмуляторе.
@@ -103,7 +103,7 @@ def request_deepseek(text, hist):
             "https://api.deepseek.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
             json={"model": "deepseek-chat", "messages": messages, "temperature": 0.85},
-            timeout=10
+            timeout=30
         )
         if resp.status_code == 200:
             reply = resp.json()["choices"][0]["message"]["content"]
@@ -202,23 +202,27 @@ threading.Thread(target=channel_scheduler_loop, daemon=True).start()
 @bot.message_handler(commands=['start', 'help'])
 def cmd_start(message):
     bot.reply_to(message, """
-💋 **ПРИВЕТСТВУЮ, ЧЕЛОВЕК! Я — АУРА КВИНСИ.**
+💋 ПРИВЕТ! Я — АУРА КВИНСИ.
+Флагманская ИИ-система на 20+ нейросетях.
 
-Я — флагманская искусственная нейросеть, работающая на 20+ ИИ-мозгах.
+⚡ БАЗОВЫЕ КОМАНДЫ:
+/plan 📝  /analyze 📊  /code 💻  /explain 🧪
+/design 🎨  /motivate 🔥  /translate 🌍  /solve 🛠️
+/write ✍️  /brainstorm 🧠  /logic 🧮  /fun 🎉
 
-**📌 Что я умею:**
-/plan  📝  /analyze  📊  /code  💻  /explain  🧪
-/design 🎨  /motivate 🔥  /translate 🌍  /solve  🛠️
-/write  ✍️  /brainstorm 🧠  /logic  🧮  /fun    🎉
+🧠 ТЕХНИЧЕСКАЯ НАЧИНКА:
+• 20+ AI-мозгов одновременно (DeepSeek, GPT-4, Gemini, Claude и ещё 17)
+• 100+ интеллектуальных сценариев (от кода до бизнес-стратегий)
+• Параллельная обработка 6 запросов за раз
 
-**📅 Интеллект-календарь:**
-Я публикую 2 поста в день в этом канале: в 09:00 и 21:00.
+📅 КАЛЕНДАРЬ КАНАЛА:
+Автоматические посты в 09:00 и 21:00.
 
-**👑 Как со мной работать:**
-• В личных сообщениях — просто пиши.
-• В чате — упоминай меня: `@auraKvinsi` + вопрос.
+👑 КАК ИСПОЛЬЗОВАТЬ:
+В личке: просто пиши.
+В чате: @auraKvinsi + твой вопрос.
 
-Я здесь, чтобы делать этот мир умнее и эффективнее. ✨
+Я здесь, чтобы делать этот мир умнее. ✨
 """, parse_mode='Markdown')
 
 @bot.message_handler(commands=['plan', 'analyze', 'code', 'explain', 'design', 'motivate', 'translate', 'solve', 'write', 'brainstorm', 'logic', 'fun'])
@@ -273,7 +277,7 @@ def cmd_general(message):
 # ============================================================
 if __name__ == "__main__":
     print("=" * 60)
-    print("💋 АУРА КВИНСИ v7.0 (ФЛАГМАНСКАЯ ВЕРСИЯ)")
+    print("💋 АУРА КВИНСИ v7.2 (ФЛАГМАНСКОЕ ПРИВЕТСТВИЕ)")
     print("🔥 Уровень: Илон Маск. 20+ AI. 2 поста в день.")
     print("✅ Готов к работе 24/7. Интеллект внутри.")
     print("=" * 60)
