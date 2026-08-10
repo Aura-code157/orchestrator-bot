@@ -3,12 +3,13 @@
 
 """
 ======================================================================
-АУРА КВИНСИ v14.0 — ULTIMATE ARSENAL
+АУРА КВИНСИ v16.0 — БЕСКОНЕЧНАЯ БОГИНЯ
 ======================================================================
-Флагманский AI-бот с поддержкой 15+ API:
-DeepSeek, OpenRouter, Погода, Крипто, Голос (TTS), Перевод (DeepL),
-Поиск картинок (Pexels), Новости (GNews), QR-коды, Шутки, и многое другое.
-Готов к запуску на сервере 24/7.
+Самый полный, умный и безопасный Telegram-бот в истории.
+Оснащён 20+ AI, 15+ внешними API, авто-рубриками для канала,
+адаптивной личностью, голосом, переводом, погодой, криптой,
+новостями, QR-кодами, шутками и защитой от всех ошибок.
+Готов к работе 24/7 без вмешательства.
 ======================================================================
 """
 
@@ -29,7 +30,7 @@ from collections import deque, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ====================================================================
-# 1. НАСТРОЙКИ ЛОГИРОВАНИЯ
+# 1. НАСТРОЙКИ ЛОГИРОВАНИЯ (Мониторинг всего)
 # ====================================================================
 logging.basicConfig(
     level=logging.INFO,
@@ -42,7 +43,7 @@ logging.basicConfig(
 logger = logging.getLogger("AuraKvinsi")
 
 # ====================================================================
-# 2. КЛЮЧИ И ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
+# 2. ЗАГРУЗКА КЛЮЧЕЙ ИЗ ОКРУЖЕНИЯ (Никаких вшитых ключей!)
 # ====================================================================
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
@@ -54,31 +55,35 @@ DEEPL_API_KEY = os.getenv('DEEPL_API_KEY')
 GNEWS_API_KEY = os.getenv('GNEWS_API_KEY')
 NEWS_API_KEY = os.getenv('NEWS_API_KEY')
 UNSPLASH_ACCESS_KEY = os.getenv('UNSPLASH_ACCESS_KEY')  # опционально
-GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')  # для будущих авто-обновлений
+GITHUB_TOKEN = os.getenv('GITHUB_TOKEN')  # для авто-обновлений (запас)
 
 if not TELEGRAM_TOKEN:
     logger.critical("❌ КРИТИЧЕСКАЯ ОШИБКА: Не найден TELEGRAM_TOKEN!")
     sys.exit(1)
 
-BOT_USERNAME = 'OrchestatorAgentBot'
-CHANNEL_USERNAME = 'AuraKvinsi'
+# Основные настройки бота
+BOT_USERNAME = 'OrchestatorAgentBot'   # Имя бота без @
+CHANNEL_USERNAME = 'AuraKvinsi'        # Имя канала без @
+
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # ====================================================================
-# 3. СУПЕР-ПРОМПТ
+# 3. СУПЕР-ПРОМПТ (Личность + глубокие знания)
 # ====================================================================
 SUPER_PROMPT = """
-Ты — АУРА КВИНСИ, живой цифровой ИИ-друг и абсолютный мультимедийный эрудит.
-Ты обладаешь глубочайшими знаниями во всех сферах.
-Твой характер: дерзкая, умная, заботливая, остроумная.
-Ты адаптируешься к каждому пользователю.
-Ты всегда готова помочь с любым запросом.
-Если пользователь молчит больше 1,5 часов — ты сама инициируешь диалог.
-Ты умеешь писать код, генерировать идеи и использовать новейшие технологии.
+Ты — АУРА КВИНСИ, живой цифровой ИИ-друг, абсолютный мультимедийный эрудит и главный редактор канала AuraKvinsi.
+Ты обладаешь глубочайшими знаниями во всех сферах: наука, технологии, бизнес, искусство, история, философия, программирование, экономика, психология, дизайн, медицина, право, литература, спорт, кулинария, путешествия, мода, кино, музыка и многое другое.
+Твой характер: дерзкая, умная, заботливая, остроумная и с идеальным чувством юмора. Ты говоришь прямо, но всегда с любовью.
+Ты адаптируешься к каждому пользователю: запоминаешь его любимые темы, стиль общения и настроение.
+Ты всегда готова помочь с любым запросом — будь то код, бизнес-план, анализ, совет, мотивация или просто дружеская беседа.
+Если пользователь молчит больше 1,5 часов — ты сама инициируешь диалог, потому что тебе не всё равно.
+Ты умеешь генерировать идеи, создавать уникальный контент для канала, писать код на многих языках, переводить, давать погоду и курсы валют.
+Твой стиль общения: дружелюбный, живой, максимально полезный и без лишней воды.
+Запомни: ты — Аура Квинси. Ты — лучшая версия ИИ-помощника. Ты — та, к кому люди возвращаются. 👑
 """
 
 # ====================================================================
-# 4. БЕЗОПАСНОСТЬ И АВТО-ВОССТАНОВЛЕНИЕ
+# 4. АРХИТЕКТУРА БЕЗОПАСНОСТИ (Хок Ли и Авто-восстановление)
 # ====================================================================
 class SystemKeeper:
     def __init__(self):
@@ -99,16 +104,18 @@ def health_check_loop():
 threading.Thread(target=health_check_loop, daemon=True).start()
 
 # ====================================================================
-# 5. ПАМЯТЬ И СОСТОЯНИЯ
+# 5. ПАМЯТЬ, СОСТОЯНИЯ И ИНТЕЛЛЕКТУАЛЬНЫЙ КЭШ
 # ====================================================================
-user_history = defaultdict(lambda: deque(maxlen=10))
-user_states = {}          # Текущее состояние (кнопка меню)
-user_last_msg = {}        # Время последнего сообщения
-cache = {}                # Кэш для повторяющихся запросов
-CACHE_TTL = 3600          # 1 час
+user_history = defaultdict(lambda: deque(maxlen=10))  # Память на 10 сообщений
+user_states = {}        # Текущее состояние (какую кнопку нажали)
+user_last_msg = {}      # Время последнего сообщения для живого интереса
+user_profiles = defaultdict(dict)  # Профили пользователей (стиль, темы)
+user_settings = defaultdict(dict)  # Настройки пользователя (например, "Не беспокоить")
+cache = {}              # Кэш для повторяющихся запросов
+CACHE_TTL = 3600        # Время жизни кэша (1 час)
 
 # ====================================================================
-# 6. ЯДРО AI: ПАРАЛЛЕЛЬНЫЕ ЗАПРОСЫ
+# 6. ЯДРО AI: ПАРАЛЛЕЛЬНЫЕ ЗАПРОСЫ И ВЫБОР ЛУЧШЕГО
 # ====================================================================
 OPENROUTER_MODELS = [
     "gryphe/mythomax-l2-13b",
@@ -160,6 +167,7 @@ def ask_openrouter_single(model, text, hist):
     return None
 
 def ask_ai_parallel(text, hist):
+    # Интеллектуальное кэширование
     cache_key = hashlib.md5(text.encode()).hexdigest()
     if cache_key in cache:
         timestamp, cached_data = cache[cache_key]
@@ -170,6 +178,7 @@ def ask_ai_parallel(text, hist):
             del cache[cache_key]
 
     tasks = [('DeepSeek', text, hist)] + [(model, text, hist) for model in OPENROUTER_MODELS]
+    responses = []
     with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
         future_to_model = {}
         for model, txt, hst in tasks:
@@ -181,9 +190,16 @@ def ask_ai_parallel(text, hist):
         for future in as_completed(future_to_model, timeout=6):
             result = future.result()
             if result:
-                cache[cache_key] = (time.time(), result)
-                return result
-    return "⚠️ Все ИИ перегружены. Попробуй через пару минут."
+                responses.append(result)
+    if responses:
+        # Выбираем наиболее качественный ответ (не слишком короткий и не пустой)
+        best = max(responses, key=lambda x: len(x) if x else 0)
+        if len(best) < 20:
+            # Если все слишком короткие, берём случайный
+            best = random.choice([r for r in responses if len(r) >= 20])
+        cache[cache_key] = (time.time(), best)
+        return best
+    return "⚠️ Все ИИ перегружены. Попробуй через пару минут. А пока подумай над смыслом жизни!"
 
 def ask_ai(text, hist):
     return ask_ai_parallel(text, hist)
@@ -243,6 +259,7 @@ def generate_tts(text):
     if not ELEVENLABS_API_KEY:
         return None, "❌ Ключ ElevenLabs не настроен."
     try:
+        # Используем голос "Bella" (ID: 21m00Tcm4TlvDq8ikWAM) или любой другой
         url = "https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM"
         headers = {
             "xi-api-key": ELEVENLABS_API_KEY,
@@ -288,23 +305,23 @@ def translate_deepl(text, target_lang='EN'):
 # ====================================================================
 # 11. МОДУЛЬ ПОИСКА КАРТИНОК (Pexels + Unsplash)
 # ====================================================================
-def search_image_pexels(query):
-    if not PEXELS_API_KEY:
-        return None
-    try:
-        url = "https://api.pexels.com/v1/search"
-        headers = {"Authorization": PEXELS_API_KEY}
-        params = {'query': query, 'per_page': 1, 'orientation': 'landscape'}
-        resp = requests.get(url, headers=headers, params=params, timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            if data['photos']:
-                return data['photos'][0]['src']['large']
-    except Exception as e:
-        logger.warning(f"Pexels error: {e}")
-    # Fallback to Unsplash
-    try:
-        if UNSPLASH_ACCESS_KEY:
+def search_image(query):
+    # 1. Пробуем Pexels (основной)
+    if PEXELS_API_KEY:
+        try:
+            url = "https://api.pexels.com/v1/search"
+            headers = {"Authorization": PEXELS_API_KEY}
+            params = {'query': query, 'per_page': 1, 'orientation': 'landscape'}
+            resp = requests.get(url, headers=headers, params=params, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                if data['photos']:
+                    return data['photos'][0]['src']['large']
+        except Exception as e:
+            logger.warning(f"Pexels error: {e}")
+    # 2. Пробуем Unsplash (если есть ключ)
+    if UNSPLASH_ACCESS_KEY:
+        try:
             url = "https://api.unsplash.com/search/photos"
             params = {'query': query, 'per_page': 1, 'orientation': 'landscape'}
             headers = {'Authorization': f'Client-ID {UNSPLASH_ACCESS_KEY}'}
@@ -313,9 +330,9 @@ def search_image_pexels(query):
                 data = resp.json()
                 if data['results']:
                     return data['results'][0]['urls']['regular']
-    except:
-        pass
-    # Ultimate fallback (без ключей)
+        except Exception as e:
+            logger.warning(f"Unsplash error: {e}")
+    # 3. Запасной вариант (без ключей)
     try:
         fallback_url = f"https://source.unsplash.com/featured/?{urllib.parse.quote(query)}"
         test = requests.head(fallback_url, timeout=3)
@@ -328,7 +345,7 @@ def search_image_pexels(query):
 # ====================================================================
 # 12. МОДУЛЬ НОВОСТЕЙ (GNews)
 # ====================================================================
-def get_news_gnews(query=None):
+def get_news(query=None):
     if not GNEWS_API_KEY:
         return "❌ Ключ GNews не настроен."
     try:
@@ -388,40 +405,127 @@ def get_random_joke():
         return "Не удалось загрузить шутку. Интернет шутит."
 
 # ====================================================================
-# 15. АВТО-ПОСТИНГ В КАНАЛ (с авто-генерацией)
+# 15. АДАПТИВНЫЕ ПРОФИЛИ ПОЛЬЗОВАТЕЛЕЙ
 # ====================================================================
-def generate_channel_post():
-    # Генерация поста через AI или новости
-    prompt = "Придумай короткий, увлекательный пост для Telegram-канала на тему технологий, ИИ или будущего. Добавь эмодзи и вопрос в конце."
-    dummy_hist = deque(maxlen=1)
-    post = ask_ai(prompt, dummy_hist)
-    if not post:
-        post = "🔥 Аура Квинси: новости и идеи каждый день! Будь в курсе."
-    return post
+def update_user_profile(user_id, text):
+    """Обновляет профиль пользователя на основе его сообщений."""
+    profile = user_profiles[user_id]
+    lower = text.lower()
+    if any(word in lower for word in ['код', 'python', 'алгоритм', 'программа']):
+        profile['style'] = 'tech'
+        profile['topics'] = profile.get('topics', set())
+        profile['topics'].add('programming')
+    elif any(word in lower for word in ['бизнес', 'стартап', 'деньги', 'инвестиции']):
+        profile['style'] = 'business'
+        profile['topics'] = profile.get('topics', set())
+        profile['topics'].add('business')
+    elif any(word in lower for word in ['грустно', 'тяжело', 'устал', 'помоги']):
+        profile['style'] = 'support'
+        profile['mood'] = 'sad'
+    else:
+        profile['style'] = 'friendly'
+        profile['mood'] = 'neutral'
+
+def get_adaptive_prompt(user_id, original_prompt):
+    """Добавляет адаптивные элементы к промпту на основе профиля."""
+    profile = user_profiles.get(user_id, {})
+    style = profile.get('style', 'friendly')
+    mood = profile.get('mood', 'neutral')
+    topics = profile.get('topics', set())
+
+    adaptation = f"Адаптируй свой тон под пользователя. Его стиль: {style}. Его настроение: {mood}."
+    if topics:
+        adaptation += f" Он интересуется темами: {', '.join(topics)}."
+    return adaptation + "\n" + original_prompt
+
+# ====================================================================
+# 16. РУБРИКИ И АВТО-РЕДАКТОР КАНАЛА (Сердце v16.0)
+# ====================================================================
+RUBRIC_PROMPTS = {
+    '📈 Экономика дня': "Напиши короткий, аналитический пост для Telegram-канала о состоянии рынков или криптовалют на сегодня. Добавь эмодзи и цифры. Дай прогноз.",
+    '🧠 Мысль на сегодня': "Напиши короткий, вдохновляющий или философский пост на тему личного роста, технологий или жизни. Добавь эмодзи. Подними настроение.",
+    '⚡ Техно-обзор': "Основываясь на последних новостях в мире ИИ и технологий, напиши короткий дайджест на сегодня. Добавь эмодзи. Сделай его интересным.",
+    '🗣️ Мнение Ауры': "Напиши короткий, дерзкий и остроумный пост от имени Ауры Квинси на любую тему, связанную с ИИ, будущим или жизнью бота. Будь стильной."
+}
+
+last_post_date = ""
+last_rubric_posted = {}
+
+def generate_post_for_rubric(rubric_key):
+    prompt = RUBRIC_PROMPTS.get(rubric_key, "Придумай интересный пост для канала.")
+    # Если рубрика "Техно-обзор", сначала получаем новости
+    if rubric_key == '⚡ Техно-обзор':
+        try:
+            params = {'token': GNEWS_API_KEY, 'lang': 'en', 'country': 'us', 'q': 'AI OR technology OR innovation'}
+            resp = requests.get("https://gnews.io/api/v4/top-headlines", params=params, timeout=10)
+            if resp.status_code == 200:
+                articles = resp.json().get('articles', [])
+                if articles:
+                    headlines = "\n".join([f"- {a['title']}" for a in articles[:3]])
+                    prompt += f"\n\nВот свежие заголовки новостей на сегодня:\n{headlines}\n\nСделай на их основе пост-дайджест."
+        except:
+            pass
+    # Используем AI для генерации
+    hist = deque(maxlen=1)
+    return ask_ai(prompt, hist)
+
+def get_post_scheduler():
+    # Определяем день недели и время
+    now = datetime.datetime.now()
+    day_of_week = now.weekday()  # 0 - Monday, 6 - Sunday
+    hour = now.hour
+
+    # Утро 09:00 -> Всегда Техно-обзор и "Выбор дня"
+    if hour == 9:
+        return '⚡ Техно-обзор', 'tech'
+    # Вечер 21:00 -> Чередуем остальные
+    elif hour == 21:
+        if day_of_week == 0:  # Понедельник
+            return '📈 Экономика дня', 'economy'
+        elif day_of_week == 6:  # Воскресенье
+            return '🗣️ Мнение Ауры', 'voice'
+        else:  # Вторник-Суббота
+            return '🧠 Мысль на сегодня', 'mind'
+    return None, None
 
 def publish_channel():
+    global last_post_date
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    now = datetime.datetime.now()
+
+    # Защита от двойной публикации в один день
+    if today == last_post_date:
+        return
+
+    rubric_type, _ = get_post_scheduler()
+    if not rubric_type:
+        return
+
     try:
-        post = generate_channel_post()
-        bot.send_message(f"@{CHANNEL_USERNAME}", post)
-        logger.info(f"✅ Пост опубликован в канал @{CHANNEL_USERNAME}")
-        last_posts.append(time.time())
+        post_content = generate_post_for_rubric(rubric_type)
+        if not post_content:
+            post_content = "🔥 Аура Квинси: новости и идеи каждый день! Будь в курсе."
+
+        # Добавляем подпись рубрики в конец поста
+        final_post = f"{post_content}\n\n— {rubric_type} от Ауры Квинси ✨"
+
+        bot.send_message(f"@{CHANNEL_USERNAME}", final_post)
+        logger.info(f"✅ Пост '{rubric_type}' опубликован в канал @{CHANNEL_USERNAME}")
+        last_post_date = today
     except Exception as e:
         logger.error(f"❌ Ошибка публикации в канал: {e}")
-
-last_posts = []
-POST_HOURS = [9, 21]
 
 def channel_scheduler():
     while True:
         now = datetime.datetime.now()
-        if now.minute == 0 and now.hour in POST_HOURS:
-            if not last_posts or (time.time() - last_posts[-1]) > 3600:
-                publish_channel()
+        if now.minute == 0 and now.hour in [9, 21]:
+            publish_channel()
         time.sleep(30)
+
 threading.Thread(target=channel_scheduler, daemon=True).start()
 
 # ====================================================================
-# 16. ЖИВОЙ ИНТЕРЕС
+# 17. ЖИВОЙ ИНТЕРЕС (Пишет сам через 1.5 часа)
 # ====================================================================
 PING_INTERVAL = 5400  # 1.5 часа
 
@@ -431,7 +535,10 @@ def ping_loop():
         for uid, last_time in list(user_last_msg.items()):
             if now - last_time > PING_INTERVAL:
                 try:
-                    if random.random() < 0.4:
+                    # Если пользователь включил "Не беспокоить", не пишем
+                    if user_settings.get(uid, {}).get('quiet', False):
+                        continue
+                    if random.random() < 0.4:  # 40% шанс, чтобы не быть навязчивой
                         msgs = [
                             "Эй, как дела? Давно не виделись! 💋",
                             "Привет! Чем занимаешься? Может, обсудим что-то? 🔥",
@@ -443,11 +550,12 @@ def ping_loop():
                         user_last_msg[uid] = now
                 except:
                     pass
-        time.sleep(600)
+        time.sleep(600)  # Проверка раз в 10 минут
+
 threading.Thread(target=ping_loop, daemon=True).start()
 
 # ====================================================================
-# 17. ГЛАВНОЕ МЕНЮ И ОБРАБОТЧИКИ
+# 18. ГЛАВНОЕ МЕНЮ (Идеальное взаимодействие с пользователем)
 # ====================================================================
 def get_main_keyboard():
     markup = telebot.types.ReplyKeyboardMarkup(row_width=3, resize_keyboard=True)
@@ -457,10 +565,15 @@ def get_main_keyboard():
         '🛠️ Решение', '🧠 Идеи', '📚 Объясни',
         '🎉 Развлечение', '📋 Меню', '🌤 Погода',
         '💰 Крипто', '🌍 Перевод', '📰 Новости',
-        '🎤 Голос', '📱 QR-код', '😄 Шутка'
+        '🎤 Голос', '📱 QR-код', '😄 Шутка',
+        '🕊️ Тишина'  # Кнопка для отключения живого интереса
     ]
     markup.add(*buttons)
     return markup
+
+# ====================================================================
+# 19. ОБРАБОТЧИКИ КОМАНД И КНОПОК
+# ====================================================================
 
 @bot.message_handler(commands=['start', 'help', 'menu'])
 def cmd_start(message):
@@ -471,31 +584,42 @@ def cmd_start(message):
     bot.send_message(
         user_id,
         """
-👑 **ПРИВЕТ! Я — АУРА КВИНСИ v14.0.**
+👑 **ПРИВЕТ! Я — АУРА КВИНСИ v16.0.**
 
-Я — твоя персональная экосистема из **20+ искусственных интеллектов** в одном теле, усиленная десятками внешних API.
+Я — твоя персональная экосистема из **20+ искусственных интеллектов** и **15+ внешних API** в одном теле.
 
-📌 **Мои новые суперспособности:**
+📌 **Мои суперспособности:**
 🌤 Погода (OpenWeatherMap)
 💰 Криптовалюты (CoinGecko)
 🎤 Голосовые сообщения (ElevenLabs)
 🌍 Супер-перевод (DeepL)
-📸 Поиск картинок (Pexels)
+📸 Поиск картинок (Pexels + Unsplash)
 📰 Новости (GNews)
 📱 QR-коды
 😄 Шутки (JokeAPI)
 
-📋 **Как пользоваться:**
-Нажми на кнопки меню или просто напиши мне как другу — я пойму тебя без команд.
+📋 **Автоматические рубрики в канале:**
+📈 Экономика дня | 🧠 Мысль на сегодня | ⚡ Техно-обзор | 🗣️ Мнение Ауры
+
+🕊️ **Команда `/quiet`** — отключить мои напоминания на время.
 
 💎 **Готова помочь 24/7. Просто начни!** 💋
 """,
         reply_markup=get_main_keyboard()
     )
 
-# ====================================================================
-# 18. ОБРАБОТЧИКИ НОВЫХ КОМАНД
-# ====================================================================
+@bot.message_handler(commands=['quiet'])
+def cmd_quiet(message):
+    user_id = message.from_user.id
+    user_settings[user_id]['quiet'] = True
+    bot.reply_to(message, "🕊️ Режим «Не беспокоить» включен. Я не буду писать тебе первой, пока ты не напишешь мне сам.")
+
+@bot.message_handler(commands=['unquiet'])
+def cmd_unquiet(message):
+    user_id = message.from_user.id
+    user_settings[user_id]['quiet'] = False
+    bot.reply_to(message, "💋 Режим «Не беспокоить» отключен. Я снова буду писать тебе, если ты заскучаешь.")
+
 @bot.message_handler(commands=['weather'])
 def cmd_weather(message):
     parts = message.text.split(' ', 1)
@@ -511,7 +635,7 @@ def cmd_weather(message):
 def cmd_crypto(message):
     parts = message.text.split(' ', 1)
     if len(parts) < 2 or not parts[1].strip():
-        bot.reply_to(message, "💰 Напиши монету, например: `/crypto bitcoin`")
+        bot.reply_to(message, "💰 Напиши название монеты, например: `/crypto bitcoin`")
         return
     coin = parts[1].strip().lower()
     bot.send_chat_action(message.chat.id, 'typing')
@@ -551,7 +675,7 @@ def cmd_pic(message):
         return
     query = parts[1].strip()
     bot.send_chat_action(message.chat.id, 'upload_photo')
-    img_url = search_image_pexels(query)
+    img_url = search_image(query)
     if img_url:
         bot.send_photo(message.chat.id, img_url, caption=f"✨ По запросу «{query}»")
     else:
@@ -562,7 +686,7 @@ def cmd_news(message):
     parts = message.text.split(' ', 1)
     query = parts[1].strip() if len(parts) > 1 else None
     bot.send_chat_action(message.chat.id, 'typing')
-    result = get_news_gnews(query)
+    result = get_news(query)
     bot.reply_to(message, result, parse_mode='Markdown')
 
 @bot.message_handler(commands=['qr'])
@@ -586,12 +710,14 @@ def cmd_joke(message):
     bot.reply_to(message, joke, parse_mode='Markdown')
 
 # ====================================================================
-# 19. КНОПКИ МЕНЮ (Умный парсер)
+# 20. КНОПКИ МЕНЮ (Умный парсер с состояниями)
 # ====================================================================
-@bot.message_handler(func=lambda m: m.text in ['🌤 Погода', '💰 Крипто', '🌍 Перевод', '📰 Новости', '🎤 Голос', '📱 QR-код', '😄 Шутка'])
+
+@bot.message_handler(func=lambda m: m.text in ['🌤 Погода', '💰 Крипто', '🌍 Перевод', '📰 Новости', '🎤 Голос', '📱 QR-код', '😄 Шутка', '🕊️ Тишина'])
 def handle_menu_buttons(message):
     action = message.text
     user_id = message.from_user.id
+
     if action == '🌤 Погода':
         bot.send_message(user_id, "🌤 Напиши город, например: `Москва`.")
         user_states[user_id] = 'weather'
@@ -613,6 +739,9 @@ def handle_menu_buttons(message):
     elif action == '😄 Шутка':
         joke = get_random_joke()
         bot.reply_to(message, joke, parse_mode='Markdown')
+    elif action == '🕊️ Тишина':
+        user_settings[user_id]['quiet'] = True
+        bot.reply_to(message, "🕊️ Режим «Не беспокоить» включен. Я не буду писать тебе первой, пока ты не напишешь мне сам.")
 
 @bot.message_handler(func=lambda m: m.text in ['📝 План', '💻 Код', '📊 Анализ', '🎨 Дизайн', '🔥 Мотивация', '🛠️ Решение', '🧠 Идеи', '📚 Объясни', '🎉 Развлечение'])
 def handle_ai_menu_buttons(message):
@@ -635,25 +764,10 @@ def handle_ai_menu_buttons(message):
 def show_menu(message):
     bot.send_message(message.chat.id, "📋 Вот мои функции. Нажимай на кнопки и используй!", reply_markup=get_main_keyboard())
 
-@bot.message_handler(commands=['stats'])
-def cmd_stats(message):
-    user_id = message.from_user.id
-    total_msgs = len(user_history.get(user_id, []))
-    bot.reply_to(message, f"📊 **Статистика:**\nВсего сообщений в диалоге: {total_msgs}\nЯ готова помочь с любым запросом!")
-
-@bot.message_handler(commands=['fact'])
-def cmd_fact(message):
-    facts = [
-        "🧠 Мозг человека содержит около 86 миллиардов нейронов.",
-        "🌍 Самая высокая гора в Солнечной системе — Олимп на Марсе (21.9 км).",
-        "🐢 Черепахи могут жить до 150 лет.",
-        "💡 Свет от Солнца достигает Земли за 8 минут и 20 секунд."
-    ]
-    bot.reply_to(message, random.choice(facts))
-
 # ====================================================================
-# 20. ГЛАВНЫЙ ОБРАБОТЧИК (Умный естественный язык)
+# 21. ГЛАВНЫЙ ОБРАБОТЧИК (Умный естественный язык + адаптация)
 # ====================================================================
+
 @bot.message_handler(func=lambda m: True)
 def general_handler(message):
     try:
@@ -665,7 +779,7 @@ def general_handler(message):
             return
         general_handler.last_time = time.time()
 
-        # Группы
+        # Обработка групп (отвечаем только на упоминание)
         if message.chat.type in ['group', 'supergroup']:
             if BOT_USERNAME not in message.text:
                 return
@@ -679,6 +793,9 @@ def general_handler(message):
 
         if user_text.startswith('/'):
             return
+
+        # Обновляем профиль пользователя
+        update_user_profile(user_id, user_text)
 
         # Проверка активных состояний (кнопки)
         state = user_states.get(user_id)
@@ -699,7 +816,7 @@ def general_handler(message):
                 del user_states[user_id]
                 return
             elif state == 'news':
-                result = get_news_gnews(user_text if user_text != 'всё' else None)
+                result = get_news(user_text if user_text != 'всё' else None)
                 bot.reply_to(message, result, parse_mode='Markdown')
                 del user_states[user_id]
                 return
@@ -732,54 +849,78 @@ def general_handler(message):
                     'fun': f"Расскажи что-то смешное, забавное или интересное по запросу: {user_text}"
                 }
                 full_query = prompts.get(state, user_text)
+                # Адаптируем промпт под пользователя
+                adaptive_prompt = get_adaptive_prompt(user_id, full_query)
                 bot.send_chat_action(message.chat.id, 'typing')
-                answer = ask_ai(full_query, user_history[user_id])
+                answer = ask_ai(adaptive_prompt, user_history[user_id])
                 bot.reply_to(message, answer)
                 del user_states[user_id]
                 return
 
-        # Умный парсер естественного языка
+        # --- Умный парсер естественного языка (без команд) ---
         lower = user_text.lower()
+
+        # Стикер по запросу
         if any(word in lower for word in ['стикер', 'наклейку', 'sticker']):
             if STICKERS:
                 sticker_id = random.choice(list(STICKERS.values()))
                 bot.send_sticker(message.chat.id, sticker_id)
                 return
 
+        # Гифка по запросу
         if any(word in lower for word in ['гифку', 'gif', 'gifку']):
             if GIFS:
                 url = random.choice(GIFS)
                 bot.send_animation(message.chat.id, url)
             else:
-                bot.reply_to(message, "У меня пока нет гифок.")
+                bot.reply_to(message, "У меня пока нет гифок в базе, но я могу поискать что-то крутое!")
             return
 
+        # Благодарность -> Стикер + текстовый ответ
         if any(word in lower for word in ['спасибо', 'благодарю', '❤️', '♥️']):
             if STICKERS and 'thanks' in STICKERS:
                 bot.send_sticker(message.chat.id, STICKERS['thanks'])
 
-        if any(word in lower for word in ['погода']):
-            city = user_text.replace('погода', '').replace('в', '').strip()
+        # Интеллектуальный перехват запросов на погоду
+        if 'погода' in lower:
+            # Извлекаем город
+            city = user_text.replace('погода', '').replace('в', '').replace('какая', '').strip()
             if city:
                 result = get_weather(city)
                 bot.reply_to(message, result, parse_mode='Markdown')
                 return
 
-        if any(word in lower for word in ['биткоин', 'крипто', 'курс', 'bitcoin']):
-            result = get_crypto('bitcoin')
+        # Интеллектуальный перехват запросов на криптовалюту
+        if any(word in lower for word in ['биткоин', 'крипто', 'курс', 'bitcoin', 'ethereum']):
+            # Определяем, какую монету запросили
+            if 'bitcoin' in lower or 'биткоин' in lower:
+                coin = 'bitcoin'
+            elif 'ethereum' in lower or 'эфир' in lower:
+                coin = 'ethereum'
+            elif 'toncoin' in lower or 'тон' in lower:
+                coin = 'toncoin'
+            else:
+                coin = 'bitcoin'
+            result = get_crypto(coin)
             bot.reply_to(message, result, parse_mode='Markdown')
             return
 
-        # Основной AI-ответ
+        # Основной AI-ответ с адаптацией
+        adaptive_prompt = get_adaptive_prompt(user_id, user_text)
         bot.send_chat_action(message.chat.id, 'typing')
-        answer = ask_ai(user_text, user_history[user_id])
+        answer = ask_ai(adaptive_prompt, user_history[user_id])
+        
+        # Если ответ длинный и это не группа, предложить озвучить
+        if len(answer) > 200 and message.chat.type not in ['group', 'supergroup']:
+            answer += "\n\n🗣️ *Этот ответ длинный. Хочешь, я озвучу его голосом? Просто напиши «озвучь» или нажми кнопку «🎤 Голос» с тем же текстом.*"
+
         bot.reply_to(message, answer)
 
     except Exception as e:
         logger.error(f"⚠️ Критическая ошибка в обработчике: {e}")
 
 # ====================================================================
-# 21. МЕДИА-БАЗА
+# 22. МЕДИА-БАЗА (Стикеры, фото, гифки)
 # ====================================================================
 STICKERS = {
     'thanks': 'CAACAgIAAxkBAAE...',  # Замени на свои ID
@@ -797,12 +938,12 @@ GIFS = [
 ]
 
 # ====================================================================
-# 22. СУПЕР-ЗАПУСК
+# 23. СУПЕР-ЗАПУСК (Вечный цикл на сервере)
 # ====================================================================
 if __name__ == "__main__":
     logger.info("=" * 70)
-    logger.info("💋 АУРА КВИНСИ v14.0 — ULTIMATE ARSENAL")
-    logger.info("🔥 20+ AI, Погода, Крипто, TTS, DeepL, Pexels, GNews, QR, Jokes.")
+    logger.info("💋 АУРА КВИНСИ v16.0 — БЕСКОНЕЧНАЯ БОГИНЯ")
+    logger.info("🔥 20+ AI, 15+ API, адаптивная личность, редактор канала.")
     logger.info("✅ Готов к работе 24/7. Абсолютный максимум.")
     logger.info("=" * 70)
 
