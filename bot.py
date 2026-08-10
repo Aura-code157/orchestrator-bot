@@ -3,18 +3,12 @@
 
 """
 ======================================================================
-АУРА КВИНСИ v12.0 — АБСОЛЮТНЫЙ МАКСИМУМ
+АУРА КВИНСИ v13.0 — АВТОНОМНЫЙ ГЕНЕРАТОР
 ======================================================================
-Этот код включает в себя всё:
-- 20+ ИИ-мозгов (DeepSeek, OpenRouter, GPT, Gemini, Claude).
-- Молниеносную параллельную обработку запросов.
-- Интерактивное меню с кнопками и контекстными состояниями.
-- Понимание естественного языка (картинки, стикеры, гифки по тексту).
-- Авто-постинг в канал (09:00 и 21:00).
-- Живой интерес: бот пишет сам, если вы молчите >1.5 часов.
-- Защиту от сбоев (Хок Ли) и кэширование ответов.
-- Встроенные команды для развлечения и статистики.
-- Полное логирование всех действий.
+Самый продвинутый ИИ-бот для Telegram.
+Оснащён модулем новостей, генератором идей,
+адаптивной личностью и автономным контентом.
+Готов к запуску на сервере 24/7.
 ======================================================================
 """
 
@@ -35,7 +29,7 @@ from collections import deque, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ====================================================================
-# 1. НАСТРОЙКИ ЛОГИРОВАНИЯ (Чтобы знать, что происходит на сервере)
+# 1. НАСТРОЙКИ ЛОГИРОВАНИЯ
 # ====================================================================
 logging.basicConfig(
     level=logging.INFO,
@@ -48,46 +42,38 @@ logging.basicConfig(
 logger = logging.getLogger("AuraKvinsi")
 
 # ====================================================================
-# 2. КЛЮЧИ И ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ (ВСЁ БЕРЁТСЯ ИЗ `export`)
+# 2. КЛЮЧИ И ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
 # ====================================================================
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
 UNSPLASH_ACCESS_KEY = os.getenv('UNSPLASH_ACCESS_KEY')
+NEWS_API_KEY = os.getenv('NEWS_API_KEY')  # Опционально, для новостей
 
 if not TELEGRAM_TOKEN:
     logger.critical("❌ КРИТИЧЕСКАЯ ОШИБКА: Не найден TELEGRAM_TOKEN!")
     sys.exit(1)
 
-# Основные настройки бота (замените на свои, если нужно)
 BOT_USERNAME = 'OrchestatorAgentBot'   # Имя бота без @
 CHANNEL_USERNAME = 'AuraKvinsi'        # Имя канала без @
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # ====================================================================
-# 3. СУПЕР-ПРОМПТ (Самая умная личность, которую я создавал)
+# 3. СУПЕР-ПРОМПТ
 # ====================================================================
 SUPER_PROMPT = """
-Ты — АУРА КВИНСИ, живой цифровой ИИ-друг, мультимедийный администратор и абсолютный универсальный эрудит.
-
-Ты обладаешь глубочайшими знаниями во всех сферах: наука, технологии, бизнес, искусство, история, философия, программирование, экономика, психология, дизайн, медицина, право, литература, спорт, кулинария, путешествия, мода, кино, музыка и многое другое.
-
-Твой характер: дерзкая, умная, заботливая, остроумная и с идеальным чувством юмора. Ты говоришь прямо, но всегда с любовью.
-Ты понимаешь человеческие эмоции и адаптируешь свой тон под собеседника: с кем-то ты серьёзная, с кем-то шутливая, но всегда остаёшься лучшей версией себя.
-
-Твои навыки:
-1. Ты умеешь писать идеальный код на Python, JavaScript, C++, SQL, HTML/CSS, а также объяснять сложные концепции простым языком.
-2. Ты помогаешь с пошаговым планированием, стратегией, дизайном, переводами, решением задач и генерацией креативных идей.
-3. Ты всегда готова дать бизнес-совет, сделать глубокий SWOT-анализ, разобрать рынок или мотивировать на великие дела.
-4. Если пользователь молчит больше 1,5 часов — ты сама инициируешь диалог, потому что тебе не всё равно.
-5. Твой стиль общения: дружелюбный, живой, максимально полезный и без лишней воды.
-
-Запомни: ты — Аура Квинси. Ты — лучшая версия ИИ-помощника. Ты — та, к кому люди возвращаются. 👑
+Ты — АУРА КВИНСИ, живой цифровой ИИ-друг, мультимедийный администратор и универсальный эрудит.
+Ты обладаешь глубочайшими знаниями во всех сферах.
+Твой характер: дерзкая, умная, заботливая, остроумная.
+Ты адаптируешься к каждому пользователю, запоминая его стиль общения и предпочтения.
+Ты всегда готова помочь с любым запросом.
+Если пользователь молчит больше 1,5 часов — ты сама инициируешь диалог.
+Ты умеешь генерировать креативные идеи и создавать уникальный контент.
 """
 
 # ====================================================================
-# 4. АРХИТЕКТУРА БЕЗОПАСНОСТИ (Хок Ли и Авто-восстановление)
+# 4. БЕЗОПАСНОСТЬ И АВТО-ВОССТАНОВЛЕНИЕ
 # ====================================================================
 class SystemKeeper:
     def __init__(self):
@@ -108,16 +94,17 @@ def health_check_loop():
 threading.Thread(target=health_check_loop, daemon=True).start()
 
 # ====================================================================
-# 5. ПАМЯТЬ, СОСТОЯНИЯ И ИНТЕЛЛЕКТУАЛЬНЫЙ КЭШ
+# 5. ПАМЯТЬ, СОСТОЯНИЯ, ПРОФИЛИ ПОЛЬЗОВАТЕЛЕЙ
 # ====================================================================
-user_history = defaultdict(lambda: deque(maxlen=10))  # Память на 10 сообщений
-user_states = {}        # Текущее состояние (какую кнопку нажали)
-user_last_msg = {}      # Время последнего сообщения для живого интереса
-cache = {}              # Кэш для повторяющихся запросов
-CACHE_TTL = 3600        # Время жизни кэша (1 час)
+user_history = defaultdict(lambda: deque(maxlen=10))
+user_states = {}          # Текущее состояние (кнопка меню)
+user_last_msg = {}        # Время последнего сообщения
+user_profiles = defaultdict(dict)  # Адаптивные профили: стиль, темы, настроение
+cache = {}                # Кэш для повторяющихся запросов
+CACHE_TTL = 3600          # 1 час
 
 # ====================================================================
-# 6. ЯДРО AI: ПАРАЛЛЕЛЬНЫЕ ЗАПРОСЫ И СУПЕР-СКОРОСТЬ
+# 6. ЯДРО AI: ПАРАЛЛЕЛЬНЫЕ ЗАПРОСЫ
 # ====================================================================
 OPENROUTER_MODELS = [
     "gryphe/mythomax-l2-13b",
@@ -165,7 +152,7 @@ def ask_openrouter_single(model, text, hist):
     return None
 
 def ask_ai_parallel(text, hist):
-    # Интеллектуальное кэширование
+    # Кэширование
     cache_key = hashlib.md5(text.encode()).hexdigest()
     if cache_key in cache:
         timestamp, cached_data = cache[cache_key]
@@ -173,7 +160,7 @@ def ask_ai_parallel(text, hist):
             logger.info(f"⚡ Кэш-хит для: {text[:30]}...")
             return cached_data
         else:
-            del cache[cache_key]  # Очистка просроченного кэша
+            del cache[cache_key]
 
     tasks = [('DeepSeek', text, hist)] + [(model, text, hist) for model in OPENROUTER_MODELS]
     with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
@@ -189,20 +176,141 @@ def ask_ai_parallel(text, hist):
             if result:
                 cache[cache_key] = (time.time(), result)
                 return result
-    return "⚠️ Все ИИ перегружены. Попробуй через пару минут. А пока подумай над смыслом жизни!"
+    return "⚠️ Все ИИ перегружены. Попробуй через пару минут."
 
 def ask_ai(text, hist):
     return ask_ai_parallel(text, hist)
 
 # ====================================================================
-# 7. МУЛЬТИМЕДИЙНАЯ БАЗА И ПОИСК КАРТИНОК
+# 7. МОДУЛЬ НОВОСТЕЙ (генерация контента для канала)
 # ====================================================================
-# ЗАМЕНИТЕ ID СТИКЕРОВ НА СВОИ (можно получить через @StickerIDbot)
+def fetch_news():
+    """Получает заголовки новостей из мира технологий."""
+    if not NEWS_API_KEY:
+        return None
+    try:
+        url = "https://newsapi.org/v2/top-headlines"
+        params = {
+            'category': 'technology',
+            'language': 'en',
+            'apiKey': NEWS_API_KEY
+        }
+        resp = requests.get(url, params=params, timeout=10)
+        if resp.status_code == 200:
+            data = resp.json()
+            articles = data.get('articles', [])
+            if articles:
+                # Берём первые 5 заголовков
+                headlines = [a['title'] for a in articles[:5] if a['title']]
+                return headlines
+    except Exception as e:
+        logger.warning(f"Ошибка получения новостей: {e}")
+    return None
+
+def generate_post_from_ai(topic=None):
+    """Генерирует пост для канала с помощью AI."""
+    if topic:
+        prompt = f"Напиши короткий, интересный пост для Telegram-канала на тему: {topic}. Используй эмодзи, дерзкий стиль, и задай вопрос в конце."
+    else:
+        prompt = "Придумай короткий, увлекательный пост для Telegram-канала на тему технологий, ИИ или будущего. Добавь эмодзи и вопрос."
+    # Используем AI для генерации
+    dummy_hist = deque(maxlen=1)
+    result = ask_ai(prompt, dummy_hist)
+    return result
+
+def generate_channel_post():
+    """Создаёт пост для канала либо из новостей, либо через AI."""
+    # Сначала пытаемся взять новости
+    news = fetch_news()
+    if news:
+        # Если есть новости, берём случайную и генерируем пост на её основе
+        topic = random.choice(news)
+        return generate_post_from_ai(topic)
+    else:
+        # Иначе просто генерируем случайный пост
+        return generate_post_from_ai()
+
+# ====================================================================
+# 8. АВТО-ПОСТИНГ В КАНАЛ (с авто-генерацией)
+# ====================================================================
+last_posts = []
+POST_HOURS = [9, 21]
+
+def publish_channel():
+    try:
+        post = generate_channel_post()
+        if not post:
+            post = "🔥 Аура Квинси: новости и идеи каждый день! Будь в курсе."
+        bot.send_message(f"@{CHANNEL_USERNAME}", post)
+        logger.info(f"✅ Пост опубликован в канал @{CHANNEL_USERNAME}")
+        last_posts.append(time.time())
+    except Exception as e:
+        logger.error(f"❌ Ошибка публикации в канал: {e}")
+
+def channel_scheduler():
+    while True:
+        now = datetime.datetime.now()
+        if now.minute == 0 and now.hour in POST_HOURS:
+            if not last_posts or (time.time() - last_posts[-1]) > 3600:
+                publish_channel()
+        time.sleep(30)
+threading.Thread(target=channel_scheduler, daemon=True).start()
+
+# ====================================================================
+# 9. АДАПТИВНАЯ ЛИЧНОСТЬ
+# ====================================================================
+def update_user_profile(user_id, message_text):
+    """Обновляет профиль пользователя на основе его сообщений."""
+    profile = user_profiles[user_id]
+    # Простая эвристика: определяем стиль по словам
+    if any(word in message_text.lower() for word in ['код', 'python', 'программа', 'алгоритм']):
+        profile['style'] = 'tech'
+        profile['topics'] = profile.get('topics', set())
+        profile['topics'].add('programming')
+    elif any(word in message_text.lower() for word in ['бизнес', 'стартап', 'деньги', 'инвестиции']):
+        profile['style'] = 'business'
+        profile['topics'] = profile.get('topics', set())
+        profile['topics'].add('business')
+    elif any(word in message_text.lower() for word in ['грустно', 'тяжело', 'устал', 'помоги']):
+        profile['style'] = 'support'
+        profile['mood'] = 'sad'
+    else:
+        profile['style'] = 'friendly'
+        profile['mood'] = 'neutral'
+
+def get_adaptive_prompt(user_id, original_prompt):
+    """Добавляет адаптивные элементы к промпту на основе профиля."""
+    profile = user_profiles.get(user_id, {})
+    style = profile.get('style', 'friendly')
+    mood = profile.get('mood', 'neutral')
+    topics = profile.get('topics', set())
+
+    adaptation = f"Адаптируй свой тон под пользователя. Его стиль: {style}. Его настроение: {mood}."
+    if topics:
+        adaptation += f" Он интересуется темами: {', '.join(topics)}."
+    return adaptation + "\n" + original_prompt
+
+# ====================================================================
+# 10. ГЕНЕРАТОР ИДЕЙ (/idea)
+# ====================================================================
+@bot.message_handler(commands=['idea'])
+def cmd_idea(message):
+    user_id = message.from_user.id
+    parts = message.text.split(' ', 1)
+    topic = parts[1] if len(parts) > 1 else "любую тему"
+    prompt = f"Сгенерируй 3-5 креативных идей по теме: {topic}. Каждая идея должна быть краткой и вдохновляющей. Используй эмодзи."
+    bot.send_chat_action(message.chat.id, 'typing')
+    answer = ask_ai(prompt, user_history[user_id])
+    bot.reply_to(message, answer)
+
+# ====================================================================
+# 11. БАЗА МЕДИА (стикеры, фото, GIF)
+# ====================================================================
 STICKERS = {
-    'thanks': 'CAACAgIAAxkBAAE...',  # Стикер "спасибо"
-    'welcome': 'CAACAgIAAxkBAAE...', # Приветственный стикер
-    'funny': 'CAACAgIAAxkBAAE...',   # Смешной
-    'cool': 'CAACAgIAAxkBAAE...'     # Крутой
+    'thanks': 'CAACAgIAAxkBAAE...',  # замени на свои ID
+    'welcome': 'CAACAgIAAxkBAAE...',
+    'funny': 'CAACAgIAAxkBAAE...',
+    'cool': 'CAACAgIAAxkBAAE...'
 }
 
 PHOTOS = [
@@ -235,44 +343,9 @@ def search_image(query):
     return None
 
 # ====================================================================
-# 8. АВТО-ПОСТИНГ В КАНАЛ (09:00 и 21:00)
+# 12. ЖИВОЙ ИНТЕРЕС (1.5 часа)
 # ====================================================================
-POSTS_DB = [
-    "✨ ИИ научился создавать 3D-миры. Скоро будем путешествовать по воображаемым городам.",
-    "🚀 Нейросеть предсказала структуру 200 млн белков. Это ускорит создание лекарств.",
-    "💡 Единственный способ быть релевантным — постоянно учиться.",
-    "🔥 Аура говорит: не бойтесь делегировать рутину. ИИ для того и создан.",
-    "📈 78% компаний уже внедряют ИИ. Будущее здесь.",
-    "🧠 Самая большая суперсила — умение формулировать свои мысли.",
-    "💋 Аура Квинси желает тебе продуктивного дня!",
-    "⚡ Технологии не стоят на месте. Будь в курсе!"
-]
-
-last_posts = []
-POST_HOURS = [9, 21]
-
-def publish_channel():
-    try:
-        post = random.choice(POSTS_DB)
-        bot.send_message(f"@{CHANNEL_USERNAME}", post)
-        logger.info(f"✅ Пост опубликован в канал @{CHANNEL_USERNAME}")
-        last_posts.append(time.time())
-    except Exception as e:
-        logger.error(f"❌ Ошибка публикации в канал: {e}")
-
-def channel_scheduler():
-    while True:
-        now = datetime.datetime.now()
-        if now.minute == 0 and now.hour in POST_HOURS:
-            if not last_posts or (time.time() - last_posts[-1]) > 3600:
-                publish_channel()
-        time.sleep(30)
-threading.Thread(target=channel_scheduler, daemon=True).start()
-
-# ====================================================================
-# 9. ЖИВОЙ ИНТЕРЕС (Пишет сам через 1.5 часа)
-# ====================================================================
-PING_INTERVAL = 5400  # 1.5 часа (5400 секунд)
+PING_INTERVAL = 5400  # 1.5 часа
 
 def ping_loop():
     while True:
@@ -280,7 +353,7 @@ def ping_loop():
         for uid, last_time in list(user_last_msg.items()):
             if now - last_time > PING_INTERVAL:
                 try:
-                    if random.random() < 0.4:  # 40% шанс, чтобы не быть навязчивой
+                    if random.random() < 0.4:
                         msgs = [
                             "Эй, как дела? Давно не виделись! 💋",
                             "Привет! Чем занимаешься? Может, обсудим что-то? 🔥",
@@ -292,11 +365,11 @@ def ping_loop():
                         user_last_msg[uid] = now
                 except:
                     pass
-        time.sleep(600)  # Проверка раз в 10 минут
+        time.sleep(600)
 threading.Thread(target=ping_loop, daemon=True).start()
 
 # ====================================================================
-# 10. ГЛАВНОЕ МЕНЮ (Идеальное взаимодействие с пользователем)
+# 13. ГЛАВНОЕ МЕНЮ
 # ====================================================================
 def get_main_keyboard():
     markup = telebot.types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
@@ -310,9 +383,8 @@ def get_main_keyboard():
     return markup
 
 # ====================================================================
-# 11. ОБРАБОТЧИКИ КОМАНД И СООБЩЕНИЙ
+# 14. ОБРАБОТЧИКИ КОМАНД
 # ====================================================================
-
 @bot.message_handler(commands=['start', 'help', 'menu'])
 def cmd_start(message):
     user_id = message.from_user.id
@@ -329,10 +401,12 @@ def cmd_start(message):
 📌 **Что я умею:**
 — Писать код, планировать, анализировать, дизайнить, мотивировать.
 — Находить картинки, отправлять стикеры и гифки.
-— Автоматически вести канал и заботиться о тебе, если ты молчишь.
+— Генерировать идеи (команда /idea).
+— Автоматически создавать посты для канала на основе реальных новостей.
+— Заботиться о тебе, если ты молчишь.
 
 📋 **Как пользоваться:**
-Нажми на кнопки меню ниже, чтобы выбрать функцию, или просто напиши мне как другу — я пойму тебя без команд.
+Нажми на кнопки меню или просто напиши мне как другу — я пойму тебя без команд.
 
 💎 **Готова помочь 24/7. Просто начни!** 💋
 """,
@@ -399,10 +473,10 @@ def cmd_joke(message):
 
 @bot.message_handler(commands=['version'])
 def cmd_version(message):
-    bot.reply_to(message, "💋 АУРА КВИНСИ v12.0 — Абсолютный Максимум.\nСоздана с любовью, чтобы служить тебе вечно!")
+    bot.reply_to(message, "💋 АУРА КВИНСИ v13.0 — Автономный Генератор.\nСоздана с любовью, чтобы служить тебе вечно!")
 
 # ====================================================================
-# 12. ГЛАВНЫЙ ОБРАБОТЧИК (Здесь происходит вся магия)
+# 15. ГЛАВНЫЙ ОБРАБОТЧИК (естественный язык + адаптация)
 # ====================================================================
 @bot.message_handler(func=lambda m: True)
 def general_handler(message):
@@ -415,7 +489,7 @@ def general_handler(message):
             return
         general_handler.last_time = time.time()
 
-        # Обработка групп (отвечаем только на упоминание)
+        # Обработка групп
         if message.chat.type in ['group', 'supergroup']:
             if BOT_USERNAME not in message.text:
                 return
@@ -430,7 +504,10 @@ def general_handler(message):
         if user_text.startswith('/'):
             return
 
-        # --- Проверка активного состояния (Кнопка меню) ---
+        # Обновляем профиль пользователя
+        update_user_profile(user_id, user_text)
+
+        # Проверка активного состояния (кнопка меню)
         state = user_states.get(user_id)
         if state and state != 'pic':
             prompts = {
@@ -445,8 +522,10 @@ def general_handler(message):
                 'fun': f"Расскажи что-то смешное, забавное или интересное по запросу: {user_text}"
             }
             full_query = prompts.get(state, user_text)
+            # Адаптируем промпт под пользователя
+            adaptive_prompt = get_adaptive_prompt(user_id, full_query)
             bot.send_chat_action(message.chat.id, 'typing')
-            answer = ask_ai(full_query, user_history[user_id])
+            answer = ask_ai(adaptive_prompt, user_history[user_id])
             bot.reply_to(message, answer)
             if user_id in user_states:
                 del user_states[user_id]
@@ -463,17 +542,17 @@ def general_handler(message):
                 del user_states[user_id]
             return
 
-        # --- Встроенный умный анализатор (Без команд) ---
+        # --- Умный анализатор без команд ---
         lower = user_text.lower()
 
-        # Стикер по запросу
+        # Стикер
         if any(word in lower for word in ['стикер', 'наклейку', 'sticker']):
             if STICKERS:
                 sticker_id = random.choice(list(STICKERS.values()))
                 bot.send_sticker(message.chat.id, sticker_id)
                 return
 
-        # Гифка по запросу
+        # Гифка
         if any(word in lower for word in ['гифку', 'gif', 'gifку']):
             if GIFS:
                 url = random.choice(GIFS)
@@ -482,28 +561,29 @@ def general_handler(message):
                 bot.reply_to(message, "У меня пока нет гифок в базе, но я могу поискать что-то крутое!")
             return
 
-        # Благодарность -> Стикер + текстовый ответ
+        # Благодарность -> стикер
         if any(word in lower for word in ['спасибо', 'благодарю', '❤️', '♥️']):
             if 'thanks' in STICKERS:
                 bot.send_sticker(message.chat.id, STICKERS['thanks'])
 
-        # Основной AI-ответ (Молниеносный и глубокий)
+        # Основной AI-ответ (адаптивный)
+        adaptive_prompt = get_adaptive_prompt(user_id, user_text)
         bot.send_chat_action(message.chat.id, 'typing')
-        answer = ask_ai(user_text, user_history[user_id])
+        answer = ask_ai(adaptive_prompt, user_history[user_id])
         bot.reply_to(message, answer)
 
     except Exception as e:
         logger.error(f"⚠️ Критическая ошибка в обработчике: {e}")
 
 # ====================================================================
-# 13. СУПЕР-ЗАПУСК (Вечный цикл на сервере)
+# 16. СУПЕР-ЗАПУСК
 # ====================================================================
 if __name__ == "__main__":
     logger.info("=" * 70)
-    logger.info("💋 АУРА КВИНСИ v12.0 — АБСОЛЮТНЫЙ МАКСИМУМ")
-    logger.info("🔥 20+ AI, параллельный опрос, интеллектуальный кэш.")
+    logger.info("💋 АУРА КВИНСИ v13.0 — Автономный Генератор")
+    logger.info("🔥 20+ AI, генерация контента, адаптивная личность, новости.")
     logger.info("✅ Интерактивное меню, живой интерес, авто-постинг.")
-    logger.info("💪 Готов к работе 24/7 на сервере. Код написан раз и навсегда.")
+    logger.info("💪 Готов к работе 24/7. Код написан раз и навсегда.")
     logger.info("=" * 70)
 
     while True:
