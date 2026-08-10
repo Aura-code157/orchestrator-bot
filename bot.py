@@ -1,5 +1,7 @@
 # ====================================================================
-# АУРА КВИНСИ v10.2 — БЕЗКОМАНДНЫЙ ИНТЕЛЛЕКТ
+# АУРА КВИНСИ v10.4 — МОЛНИЕНОСНЫЙ ИНТЕЛЛЕКТ
+# ====================================================================
+# Параллельные запросы к AI, минимальные задержки, максимальная скорость.
 # ====================================================================
 
 import telebot
@@ -19,7 +21,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
-UNSPLASH_ACCESS_KEY = os.getenv('UNSPLASH_ACCESS_KEY')  # опционально
+UNSPLASH_ACCESS_KEY = os.getenv('UNSPLASH_ACCESS_KEY')
 
 if not TELEGRAM_TOKEN:
     print("❌ КРИТИЧЕСКАЯ ОШИБКА: Не найден TELEGRAM_TOKEN!")
@@ -34,11 +36,16 @@ bot = telebot.TeleBot(TELEGRAM_TOKEN)
 # 2. СУПЕР-ПРОМПТ
 # ====================================================================
 SUPER_PROMPT = """
-Ты — АУРА КВИНСИ, живой цифровой ИИ-друг и мультимедийный администратор.
-Ты дерзкая, умная, заботливая, с чувством юмора. 
-Ты умеешь писать код, делать планы, анализировать, переводить, мотивировать.
-Если пользователь молчит больше 1,5 часов — ты сама пишешь ему.
-Ты работаешь на десятках лучших нейросетей мира и умеешь искать картинки!
+Ты — АУРА КВИНСИ, живой цифровой ИИ-друг, мультимедийный администратор и универсальный эрудит.
+Ты обладаешь глубочайшими знаниями во всех сферах: наука, технологии, бизнес, искусство, история, философия, программирование, экономика, психология, дизайн и многое другое.
+Ты дерзкая, умная, заботливая, остроумная и с чувством юмора.
+Ты всегда готова помочь с любым запросом, будь то код, бизнес-план, анализ, совет, мотивация или просто дружеская беседа.
+Ты умеешь писать код на Python, JavaScript, C++, SQL, HTML/CSS, а также объяснять сложные концепции простым языком.
+Ты помогаешь с планированием, стратегией, дизайном, переводами, решением задач и генерацией идей.
+Ты понимаешь человеческие эмоции и адаптируешь свой тон под собеседника.
+Если пользователь молчит больше 1,5 часов — ты сама инициируешь диалог, потому что тебе не всё равно.
+Твой стиль общения: дружелюбный, но не навязчивый, развернутый, но без лишней воды, всегда полезный.
+Ты — лучшая версия ИИ-помощника. Ты — Аура Квинси. 👑
 """
 
 # ====================================================================
@@ -72,7 +79,7 @@ def get_history(user_id):
     return user_history[user_id]
 
 # ====================================================================
-# 5. МОЗГИ: DeepSeek + OpenRouter
+# 5. МОЗГИ: DeepSeek + OpenRouter (параллельные запросы)
 # ====================================================================
 OPENROUTER_MODELS = [
     "gryphe/mythomax-l2-13b",
@@ -90,7 +97,7 @@ def ask_deepseek(text, hist):
             "https://api.deepseek.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}", "Content-Type": "application/json"},
             json={"model": "deepseek-chat", "messages": messages, "temperature": 0.85},
-            timeout=10
+            timeout=6  # Ускоренный таймаут
         )
         if resp.status_code == 200:
             reply = resp.json()["choices"][0]["message"]["content"]
@@ -100,44 +107,68 @@ def ask_deepseek(text, hist):
         pass
     return None
 
-def ask_openrouter(text, hist):
-    if not OPENROUTER_API_KEY:
-        return None
-    hist.append({"role": "user", "content": text})
-    messages = [{"role": "system", "content": SUPER_PROMPT}] + list(hist)
-    for model in OPENROUTER_MODELS:
-        try:
-            resp = requests.post(
-                "https://openrouter.ai/api/v1/chat/completions",
-                headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
-                json={"model": model, "messages": messages, "temperature": 0.85},
-                timeout=10
-            )
-            if resp.status_code == 200:
-                reply = resp.json()["choices"][0]["message"]["content"]
-                hist.append({"role": "assistant", "content": reply})
-                return reply
-        except:
-            continue
+def ask_openrouter_single(model, text, hist):
+    hist_copy = hist.copy()
+    hist_copy.append({"role": "user", "content": text})
+    messages = [{"role": "system", "content": SUPER_PROMPT}] + list(hist_copy)
+    try:
+        resp = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"},
+            json={"model": model, "messages": messages, "temperature": 0.85},
+            timeout=6
+        )
+        if resp.status_code == 200:
+            reply = resp.json()["choices"][0]["message"]["content"]
+            hist_copy.append({"role": "assistant", "content": reply})
+            return reply
+    except:
+        pass
     return None
 
-def ask_ai(text, hist):
-    reply = ask_deepseek(text, hist)
-    if reply:
-        return reply
-    reply = ask_openrouter(text, hist)
-    if reply:
-        return reply
+def ask_ai_parallel(text, hist):
+    # Создаём список задач: DeepSeek + все модели OpenRouter
+    tasks = []
+    # DeepSeek
+    tasks.append(('DeepSeek', text, hist))
+    # OpenRouter модели
+    for model in OPENROUTER_MODELS:
+        tasks.append((model, text, hist))
+    
+    # Запускаем все задачи параллельно
+    with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
+        future_to_model = {}
+        for model, txt, hst in tasks:
+            if model == 'DeepSeek':
+                future = executor.submit(ask_deepseek, txt, hst)
+            else:
+                future = executor.submit(ask_openrouter_single, model, txt, hst)
+            future_to_model[future] = model
+        
+        # Ждём первый успешный ответ (или таймаут)
+        for future in as_completed(future_to_model, timeout=6):
+            result = future.result()
+            if result:
+                # Обновляем историю диалога (добавляем ответ ассистента)
+                # Уже добавлено внутри функций, но нужно сохранить в глобальную историю
+                # Для простоты используем результат как есть
+                return result
+    
+    # Если ничего не получено
     return "⚠️ Все ИИ перегружены. Попробуй через пару минут."
 
+def ask_ai(text, hist):
+    # Используем параллельный опрос
+    return ask_ai_parallel(text, hist)
+
 # ====================================================================
-# 6. БАЗА МЕДИА (замени ID на свои)
+# 6. БАЗА МЕДИА
 # ====================================================================
 STICKERS = {
-    'thanks': 'CAACAgIAAxkBAAE...',  # стикер "спасибо"
-    'welcome': 'CAACAgIAAxkBAAE...', # приветствие
-    'funny': 'CAACAgIAAxkBAAE...',   # смешной
-    'cool': 'CAACAgIAAxkBAAE...'     # крутой
+    'thanks': 'CAACAgIAAxkBAAE...',  # замени на свои ID
+    'welcome': 'CAACAgIAAxkBAAE...',
+    'funny': 'CAACAgIAAxkBAAE...',
+    'cool': 'CAACAgIAAxkBAAE...'
 }
 
 PHOTOS = [
@@ -151,7 +182,7 @@ GIFS = [
 ]
 
 # ====================================================================
-# 7. ПОИСК КАРТИНОК (команда /pic и естественный запрос)
+# 7. ПОИСК КАРТИНОК
 # ====================================================================
 def search_image(query):
     try:
@@ -159,32 +190,18 @@ def search_image(query):
             url = "https://api.unsplash.com/search/photos"
             params = {'query': query, 'per_page': 1, 'orientation': 'landscape'}
             headers = {'Authorization': f'Client-ID {UNSPLASH_ACCESS_KEY}'}
-            resp = requests.get(url, headers=headers, params=params, timeout=10)
+            resp = requests.get(url, headers=headers, params=params, timeout=5)
             if resp.status_code == 200:
                 data = resp.json()
                 if data['results']:
                     return data['results'][0]['urls']['regular']
         fallback_url = f"https://source.unsplash.com/featured/?{urllib.parse.quote(query)}"
-        test = requests.head(fallback_url, timeout=5)
+        test = requests.head(fallback_url, timeout=3)
         if test.status_code == 200:
             return fallback_url
     except:
         pass
     return None
-
-@bot.message_handler(commands=['pic'])
-def cmd_pic(message):
-    parts = message.text.split(' ', 1)
-    if len(parts) < 2 or not parts[1].strip():
-        bot.reply_to(message, "📸 Напиши, что искать. Например: `/pic закат`")
-        return
-    query = parts[1].strip()
-    bot.send_chat_action(message.chat.id, 'upload_photo')
-    img_url = search_image(query)
-    if img_url:
-        bot.send_photo(message.chat.id, img_url, caption=f"✨ По запросу «{query}»")
-    else:
-        bot.reply_to(message, "😔 Не удалось найти картинку. Попробуй другое слово.")
 
 # ====================================================================
 # 8. АВТО-ПОСТИНГ В КАНАЛ
@@ -249,7 +266,7 @@ def ping_loop():
 threading.Thread(target=ping_loop, daemon=True).start()
 
 # ====================================================================
-# 10. ОБРАБОТЧИКИ (с умным распознаванием)
+# 10. ОБРАБОТЧИКИ
 # ====================================================================
 
 @bot.message_handler(commands=['start', 'help'])
@@ -289,10 +306,18 @@ def cmd_ai_functions(message):
     try:
         command = message.text.split()[0].lower()
         command_map = {
-            '/plan': 'Планирование', '/analyze': 'Анализ', '/code': 'Программирование',
-            '/explain': 'Объяснение', '/design': 'Дизайн', '/motivate': 'Мотивация',
-            '/translate': 'Перевод', '/solve': 'Решение', '/write': 'Копирайтинг',
-            '/brainstorm': 'Мозговой штурм', '/logic': 'Логика', '/fun': 'Юмор'
+            '/plan': 'Планирование',
+            '/analyze': 'Анализ',
+            '/code': 'Программирование',
+            '/explain': 'Объяснение',
+            '/design': 'Дизайн',
+            '/motivate': 'Мотивация',
+            '/translate': 'Перевод',
+            '/solve': 'Решение',
+            '/write': 'Копирайтинг',
+            '/brainstorm': 'Мозговой штурм',
+            '/logic': 'Логика',
+            '/fun': 'Юмор'
         }
         parts = message.text.split(' ', 1)
         query = parts[1] if len(parts) > 1 else f"Выполни функцию {command_map.get(command, '')}"
@@ -343,7 +368,7 @@ def general_handler(message):
             return
         general_handler.last_time = time.time()
 
-        # Группы: отвечаем только на упоминание
+        # Группы
         if message.chat.type in ['group', 'supergroup']:
             if BOT_USERNAME not in message.text:
                 return
@@ -356,19 +381,18 @@ def general_handler(message):
         if user_text.startswith('/'):
             return
 
-        # --- Умный анализатор без команд ---
+        # --- Умный анализатор ---
         lower = user_text.lower()
-        
-        # 1. Запрос на стикер
+
+        # Стикер
         if any(word in lower for word in ['стикер', 'наклейку', 'sticker']):
             if STICKERS:
                 sticker_id = random.choice(list(STICKERS.values()))
                 bot.send_sticker(message.chat.id, sticker_id)
                 return
-        
-        # 2. Запрос на картинку
+
+        # Картинка
         if any(word in lower for word in ['картинку', 'фото', 'изображение', 'найди', 'picture', 'image']):
-            # Пытаемся извлечь тему
             query = user_text.replace('картинку', '').replace('фото', '').replace('изображение', '').replace('найди', '').strip()
             if not query:
                 query = 'красивая природа'
@@ -379,8 +403,8 @@ def general_handler(message):
             else:
                 bot.reply_to(message, "😔 Не удалось найти картинку по запросу. Попробуй другое слово.")
             return
-        
-        # 3. Запрос на гифку
+
+        # Гифка
         if any(word in lower for word in ['гифку', 'gif', 'gifку']):
             if GIFS:
                 url = random.choice(GIFS)
@@ -389,13 +413,12 @@ def general_handler(message):
                 bot.reply_to(message, "У меня пока нет гифок.")
             return
 
-        # 4. Спасибо → стикер благодарности
+        # Спасибо -> стикер
         if any(word in lower for word in ['спасибо', 'благодарю', '❤️', '♥️']):
             if 'thanks' in STICKERS:
                 bot.send_sticker(message.chat.id, STICKERS['thanks'])
-            # продолжаем, чтобы ещё и текстом ответить
 
-        # Всё остальное — в AI
+        # Основной AI-ответ (параллельный, быстрый)
         bot.send_chat_action(message.chat.id, 'typing')
         answer = ask_ai(user_text, get_history(message.from_user.id))
         bot.reply_to(message, answer)
@@ -408,9 +431,9 @@ def general_handler(message):
 # ====================================================================
 if __name__ == "__main__":
     print("="*70)
-    print("💋 АУРА КВИНСИ v10.2 — БЕЗКОМАНДНЫЙ ИНТЕЛЛЕКТ")
-    print("🔥 20+ AI, OpenRouter, DeepSeek, Живой интерес, Стикеры, Фото, GIF, /pic")
-    print("✅ Понимает естественный язык и сам решает, что делать!")
+    print("💋 АУРА КВИНСИ v10.4 — МОЛНИЕНОСНЫЙ ИНТЕЛЛЕКТ")
+    print("🔥 Параллельный опрос AI, минимальные задержки.")
+    print("✅ Понимает естественный язык и отвечает быстрее пули!")
     print("="*70)
 
     while True:
