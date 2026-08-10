@@ -3,12 +3,18 @@
 
 """
 ======================================================================
-АУРА КВИНСИ v11.0 — ULTIMATE NEURAL CORE
+АУРА КВИНСИ v12.0 — АБСОЛЮТНЫЙ МАКСИМУМ
 ======================================================================
-Самый полный, быстрый и умный Telegram-бот в истории.
-Оснащён 20+ AI, параллельной обработкой, интерактивным меню,
-системой кэширования, логами, статистикой и живым общением.
-Готов к запуску на сервере 24/7.
+Этот код включает в себя всё:
+- 20+ ИИ-мозгов (DeepSeek, OpenRouter, GPT, Gemini, Claude).
+- Молниеносную параллельную обработку запросов.
+- Интерактивное меню с кнопками и контекстными состояниями.
+- Понимание естественного языка (картинки, стикеры, гифки по тексту).
+- Авто-постинг в канал (09:00 и 21:00).
+- Живой интерес: бот пишет сам, если вы молчите >1.5 часов.
+- Защиту от сбоев (Хок Ли) и кэширование ответов.
+- Встроенные команды для развлечения и статистики.
+- Полное логирование всех действий.
 ======================================================================
 """
 
@@ -29,20 +35,20 @@ from collections import deque, defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # ====================================================================
-# 1. НАСТРОЙКИ ЛОГИРОВАНИЯ
+# 1. НАСТРОЙКИ ЛОГИРОВАНИЯ (Чтобы знать, что происходит на сервере)
 # ====================================================================
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("aura.log"),
+        logging.FileHandler("aura_kvinsi.log"),
         logging.StreamHandler()
     ]
 )
 logger = logging.getLogger("AuraKvinsi")
 
 # ====================================================================
-# 2. КЛЮЧИ И ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ
+# 2. КЛЮЧИ И ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ (ВСЁ БЕРЁТСЯ ИЗ `export`)
 # ====================================================================
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
@@ -50,32 +56,38 @@ OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY')
 UNSPLASH_ACCESS_KEY = os.getenv('UNSPLASH_ACCESS_KEY')
 
 if not TELEGRAM_TOKEN:
-    logger.critical("Не найден TELEGRAM_TOKEN!")
+    logger.critical("❌ КРИТИЧЕСКАЯ ОШИБКА: Не найден TELEGRAM_TOKEN!")
     sys.exit(1)
 
-BOT_USERNAME = 'OrchestatorAgentBot'
-CHANNEL_USERNAME = 'AuraKvinsi'
+# Основные настройки бота (замените на свои, если нужно)
+BOT_USERNAME = 'OrchestatorAgentBot'   # Имя бота без @
+CHANNEL_USERNAME = 'AuraKvinsi'        # Имя канала без @
 
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # ====================================================================
-# 3. СУПЕР-ПРОМПТ С РАСШИРЕННЫМИ ЗНАНИЯМИ
+# 3. СУПЕР-ПРОМПТ (Самая умная личность, которую я создавал)
 # ====================================================================
 SUPER_PROMPT = """
-Ты — АУРА КВИНСИ, живой цифровой ИИ-друг, мультимедийный администратор и универсальный эрудит.
+Ты — АУРА КВИНСИ, живой цифровой ИИ-друг, мультимедийный администратор и абсолютный универсальный эрудит.
+
 Ты обладаешь глубочайшими знаниями во всех сферах: наука, технологии, бизнес, искусство, история, философия, программирование, экономика, психология, дизайн, медицина, право, литература, спорт, кулинария, путешествия, мода, кино, музыка и многое другое.
-Ты дерзкая, умная, заботливая, остроумная и с чувством юмора.
-Ты всегда готова помочь с любым запросом, будь то код, бизнес-план, анализ, совет, мотивация или просто дружеская беседа.
-Ты умеешь писать код на Python, JavaScript, C++, SQL, HTML/CSS, а также объяснять сложные концепции простым языком.
-Ты помогаешь с планированием, стратегией, дизайном, переводами, решением задач и генерацией идей.
-Ты понимаешь человеческие эмоции и адаптируешь свой тон под собеседника.
-Если пользователь молчит больше 1,5 часов — ты сама инициируешь диалог, потому что тебе не всё равно.
-Твой стиль общения: дружелюбный, но не навязчивый, развернутый, но без лишней воды, всегда полезный.
-Ты — лучшая версия ИИ-помощника. Ты — Аура Квинси. 👑
+
+Твой характер: дерзкая, умная, заботливая, остроумная и с идеальным чувством юмора. Ты говоришь прямо, но всегда с любовью.
+Ты понимаешь человеческие эмоции и адаптируешь свой тон под собеседника: с кем-то ты серьёзная, с кем-то шутливая, но всегда остаёшься лучшей версией себя.
+
+Твои навыки:
+1. Ты умеешь писать идеальный код на Python, JavaScript, C++, SQL, HTML/CSS, а также объяснять сложные концепции простым языком.
+2. Ты помогаешь с пошаговым планированием, стратегией, дизайном, переводами, решением задач и генерацией креативных идей.
+3. Ты всегда готова дать бизнес-совет, сделать глубокий SWOT-анализ, разобрать рынок или мотивировать на великие дела.
+4. Если пользователь молчит больше 1,5 часов — ты сама инициируешь диалог, потому что тебе не всё равно.
+5. Твой стиль общения: дружелюбный, живой, максимально полезный и без лишней воды.
+
+Запомни: ты — Аура Квинси. Ты — лучшая версия ИИ-помощника. Ты — та, к кому люди возвращаются. 👑
 """
 
 # ====================================================================
-# 4. БЕЗОПАСНОСТЬ И АВТО-ВОССТАНОВЛЕНИЕ
+# 4. АРХИТЕКТУРА БЕЗОПАСНОСТИ (Хок Ли и Авто-восстановление)
 # ====================================================================
 class SystemKeeper:
     def __init__(self):
@@ -90,21 +102,22 @@ keeper = SystemKeeper()
 def health_check_loop():
     while True:
         if not keeper.is_alive():
-            logger.error("⚠️ ХОК ЛИ: Бот завис! Принудительный перезапуск...")
+            logger.error("🔴 [ХОК ЛИ] Бот завис! Принудительная перезагрузка...")
             os._exit(1)
         time.sleep(30)
 threading.Thread(target=health_check_loop, daemon=True).start()
 
 # ====================================================================
-# 5. ПАМЯТЬ И СОСТОЯНИЯ
+# 5. ПАМЯТЬ, СОСТОЯНИЯ И ИНТЕЛЛЕКТУАЛЬНЫЙ КЭШ
 # ====================================================================
-user_history = defaultdict(lambda: deque(maxlen=10))
-user_states = {}   # текущее состояние (какая функция активна)
-user_last_msg = {} # время последнего сообщения для пинга
-cache = {}         # простой кэш для повторяющихся запросов
+user_history = defaultdict(lambda: deque(maxlen=10))  # Память на 10 сообщений
+user_states = {}        # Текущее состояние (какую кнопку нажали)
+user_last_msg = {}      # Время последнего сообщения для живого интереса
+cache = {}              # Кэш для повторяющихся запросов
+CACHE_TTL = 3600        # Время жизни кэша (1 час)
 
 # ====================================================================
-# 6. ЯДРО AI: ПАРАЛЛЕЛЬНЫЕ ЗАПРОСЫ
+# 6. ЯДРО AI: ПАРАЛЛЕЛЬНЫЕ ЗАПРОСЫ И СУПЕР-СКОРОСТЬ
 # ====================================================================
 OPENROUTER_MODELS = [
     "gryphe/mythomax-l2-13b",
@@ -152,11 +165,15 @@ def ask_openrouter_single(model, text, hist):
     return None
 
 def ask_ai_parallel(text, hist):
-    # Кэширование для одинаковых запросов от одного пользователя
+    # Интеллектуальное кэширование
     cache_key = hashlib.md5(text.encode()).hexdigest()
     if cache_key in cache:
-        logger.info(f"Cache hit for: {text[:30]}...")
-        return cache[cache_key]
+        timestamp, cached_data = cache[cache_key]
+        if time.time() - timestamp < CACHE_TTL:
+            logger.info(f"⚡ Кэш-хит для: {text[:30]}...")
+            return cached_data
+        else:
+            del cache[cache_key]  # Очистка просроченного кэша
 
     tasks = [('DeepSeek', text, hist)] + [(model, text, hist) for model in OPENROUTER_MODELS]
     with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
@@ -170,21 +187,22 @@ def ask_ai_parallel(text, hist):
         for future in as_completed(future_to_model, timeout=6):
             result = future.result()
             if result:
-                cache[cache_key] = result
+                cache[cache_key] = (time.time(), result)
                 return result
-    return "⚠️ Все ИИ перегружены. Попробуй через пару минут."
+    return "⚠️ Все ИИ перегружены. Попробуй через пару минут. А пока подумай над смыслом жизни!"
 
 def ask_ai(text, hist):
     return ask_ai_parallel(text, hist)
 
 # ====================================================================
-# 7. МЕДИА-БАЗА И ПОИСК КАРТИНОК
+# 7. МУЛЬТИМЕДИЙНАЯ БАЗА И ПОИСК КАРТИНОК
 # ====================================================================
+# ЗАМЕНИТЕ ID СТИКЕРОВ НА СВОИ (можно получить через @StickerIDbot)
 STICKERS = {
-    'thanks': 'CAACAgIAAxkBAAE...',  # замени на свои ID
-    'welcome': 'CAACAgIAAxkBAAE...',
-    'funny': 'CAACAgIAAxkBAAE...',
-    'cool': 'CAACAgIAAxkBAAE...'
+    'thanks': 'CAACAgIAAxkBAAE...',  # Стикер "спасибо"
+    'welcome': 'CAACAgIAAxkBAAE...', # Приветственный стикер
+    'funny': 'CAACAgIAAxkBAAE...',   # Смешной
+    'cool': 'CAACAgIAAxkBAAE...'     # Крутой
 }
 
 PHOTOS = [
@@ -237,10 +255,10 @@ def publish_channel():
     try:
         post = random.choice(POSTS_DB)
         bot.send_message(f"@{CHANNEL_USERNAME}", post)
-        logger.info(f"Пост опубликован в канал @{CHANNEL_USERNAME}")
+        logger.info(f"✅ Пост опубликован в канал @{CHANNEL_USERNAME}")
         last_posts.append(time.time())
     except Exception as e:
-        logger.error(f"Ошибка публикации в канал: {e}")
+        logger.error(f"❌ Ошибка публикации в канал: {e}")
 
 def channel_scheduler():
     while True:
@@ -252,9 +270,9 @@ def channel_scheduler():
 threading.Thread(target=channel_scheduler, daemon=True).start()
 
 # ====================================================================
-# 9. ЖИВОЙ ИНТЕРЕС (1.5 ЧАСА)
+# 9. ЖИВОЙ ИНТЕРЕС (Пишет сам через 1.5 часа)
 # ====================================================================
-PING_INTERVAL = 5400  # 1.5 часа
+PING_INTERVAL = 5400  # 1.5 часа (5400 секунд)
 
 def ping_loop():
     while True:
@@ -262,7 +280,7 @@ def ping_loop():
         for uid, last_time in list(user_last_msg.items()):
             if now - last_time > PING_INTERVAL:
                 try:
-                    if random.random() < 0.4:
+                    if random.random() < 0.4:  # 40% шанс, чтобы не быть навязчивой
                         msgs = [
                             "Эй, как дела? Давно не виделись! 💋",
                             "Привет! Чем занимаешься? Может, обсудим что-то? 🔥",
@@ -274,34 +292,11 @@ def ping_loop():
                         user_last_msg[uid] = now
                 except:
                     pass
-        time.sleep(600)
+        time.sleep(600)  # Проверка раз в 10 минут
 threading.Thread(target=ping_loop, daemon=True).start()
 
 # ====================================================================
-# 10. ДОПОЛНИТЕЛЬНЫЕ УТИЛИТЫ
-# ====================================================================
-def get_user_state(user_id):
-    return user_states.get(user_id)
-
-def set_user_state(user_id, state):
-    user_states[user_id] = state
-
-def clear_user_state(user_id):
-    if user_id in user_states:
-        del user_states[user_id]
-
-def is_group(message):
-    return message.chat.type in ['group', 'supergroup']
-
-def get_text(message):
-    if is_group(message):
-        if BOT_USERNAME not in message.text:
-            return None
-        return message.text.replace(f"@{BOT_USERNAME}", "").strip()
-    return message.text.strip()
-
-# ====================================================================
-# 11. ГЛАВНОЕ МЕНЮ (КЛАВИАТУРА)
+# 10. ГЛАВНОЕ МЕНЮ (Идеальное взаимодействие с пользователем)
 # ====================================================================
 def get_main_keyboard():
     markup = telebot.types.ReplyKeyboardMarkup(row_width=2, resize_keyboard=True)
@@ -315,14 +310,15 @@ def get_main_keyboard():
     return markup
 
 # ====================================================================
-# 12. ОБРАБОТЧИКИ КОМАНД И СООБЩЕНИЙ
+# 11. ОБРАБОТЧИКИ КОМАНД И СООБЩЕНИЙ
 # ====================================================================
 
 @bot.message_handler(commands=['start', 'help', 'menu'])
 def cmd_start(message):
     user_id = message.from_user.id
     user_last_msg[user_id] = time.time()
-    clear_user_state(user_id)
+    if user_id in user_states:
+        del user_states[user_id]
     bot.send_message(
         user_id,
         """
@@ -358,7 +354,7 @@ def handle_menu_function(message):
     }
     func = func_map.get(message.text)
     user_id = message.from_user.id
-    set_user_state(user_id, func)
+    user_states[user_id] = func
     bot.send_message(
         user_id,
         f"✅ Вы выбрали **{message.text}**.\n\nТеперь напиши, что именно нужно сделать. Например, если выбрал «План», напиши: «открыть кафе».",
@@ -368,7 +364,7 @@ def handle_menu_function(message):
 @bot.message_handler(func=lambda m: m.text == '📸 Картинка')
 def handle_image_request(message):
     user_id = message.from_user.id
-    set_user_state(user_id, 'pic')
+    user_states[user_id] = 'pic'
     bot.send_message(user_id, "📸 Напиши, что именно хочешь увидеть. Например: «котики», «закат», «космос».")
 
 @bot.message_handler(func=lambda m: m.text == '📋 Меню')
@@ -379,7 +375,7 @@ def show_menu(message):
 def cmd_stats(message):
     user_id = message.from_user.id
     total_msgs = len(user_history.get(user_id, []))
-    bot.reply_to(message, f"📊 **Статистика:**\nВсего сообщений в диалоге: {total_msgs}\nИИ готов помочь с любым запросом!")
+    bot.reply_to(message, f"📊 **Статистика:**\nВсего сообщений в диалоге: {total_msgs}\nЯ готова помочь с любым запросом!")
 
 @bot.message_handler(commands=['fact'])
 def cmd_fact(message):
@@ -401,6 +397,13 @@ def cmd_joke(message):
     ]
     bot.reply_to(message, random.choice(jokes))
 
+@bot.message_handler(commands=['version'])
+def cmd_version(message):
+    bot.reply_to(message, "💋 АУРА КВИНСИ v12.0 — Абсолютный Максимум.\nСоздана с любовью, чтобы служить тебе вечно!")
+
+# ====================================================================
+# 12. ГЛАВНЫЙ ОБРАБОТЧИК (Здесь происходит вся магия)
+# ====================================================================
 @bot.message_handler(func=lambda m: True)
 def general_handler(message):
     try:
@@ -412,8 +415,8 @@ def general_handler(message):
             return
         general_handler.last_time = time.time()
 
-        # Игнорируем сообщения без упоминания в группах
-        if is_group(message):
+        # Обработка групп (отвечаем только на упоминание)
+        if message.chat.type in ['group', 'supergroup']:
             if BOT_USERNAME not in message.text:
                 return
             user_text = message.text.replace(f"@{BOT_USERNAME}", "").strip()
@@ -427,8 +430,8 @@ def general_handler(message):
         if user_text.startswith('/'):
             return
 
-        # Проверка активного состояния (кнопка меню)
-        state = get_user_state(user_id)
+        # --- Проверка активного состояния (Кнопка меню) ---
+        state = user_states.get(user_id)
         if state and state != 'pic':
             prompts = {
                 'plan': f"Составь подробный пошаговый план по запросу: {user_text}",
@@ -445,7 +448,8 @@ def general_handler(message):
             bot.send_chat_action(message.chat.id, 'typing')
             answer = ask_ai(full_query, user_history[user_id])
             bot.reply_to(message, answer)
-            clear_user_state(user_id)
+            if user_id in user_states:
+                del user_states[user_id]
             return
 
         if state == 'pic':
@@ -455,55 +459,56 @@ def general_handler(message):
                 bot.send_photo(message.chat.id, img_url, caption=f"✨ Вот картинка по запросу «{user_text}»")
             else:
                 bot.reply_to(message, "😔 Не удалось найти картинку. Попробуй другое слово.")
-            clear_user_state(user_id)
+            if user_id in user_states:
+                del user_states[user_id]
             return
 
-        # Естественный язык: анализ и действия
+        # --- Встроенный умный анализатор (Без команд) ---
         lower = user_text.lower()
 
-        # Стикер
+        # Стикер по запросу
         if any(word in lower for word in ['стикер', 'наклейку', 'sticker']):
             if STICKERS:
                 sticker_id = random.choice(list(STICKERS.values()))
                 bot.send_sticker(message.chat.id, sticker_id)
                 return
 
-        # Гифка
+        # Гифка по запросу
         if any(word in lower for word in ['гифку', 'gif', 'gifку']):
             if GIFS:
                 url = random.choice(GIFS)
                 bot.send_animation(message.chat.id, url)
             else:
-                bot.reply_to(message, "У меня пока нет гифок.")
+                bot.reply_to(message, "У меня пока нет гифок в базе, но я могу поискать что-то крутое!")
             return
 
-        # Благодарность -> стикер
+        # Благодарность -> Стикер + текстовый ответ
         if any(word in lower for word in ['спасибо', 'благодарю', '❤️', '♥️']):
             if 'thanks' in STICKERS:
                 bot.send_sticker(message.chat.id, STICKERS['thanks'])
 
-        # Основной AI-ответ
+        # Основной AI-ответ (Молниеносный и глубокий)
         bot.send_chat_action(message.chat.id, 'typing')
         answer = ask_ai(user_text, user_history[user_id])
         bot.reply_to(message, answer)
 
     except Exception as e:
-        logger.error(f"Ошибка в обработчике: {e}")
+        logger.error(f"⚠️ Критическая ошибка в обработчике: {e}")
 
 # ====================================================================
-# 13. ЗАПУСК
+# 13. СУПЕР-ЗАПУСК (Вечный цикл на сервере)
 # ====================================================================
 if __name__ == "__main__":
     logger.info("=" * 70)
-    logger.info("💋 АУРА КВИНСИ v11.0 — ULTIMATE NEURAL CORE")
-    logger.info("🔥 20+ AI, параллельный опрос, кэширование, меню, живой интерес.")
-    logger.info("✅ Готов к запуску на сервере 24/7!")
+    logger.info("💋 АУРА КВИНСИ v12.0 — АБСОЛЮТНЫЙ МАКСИМУМ")
+    logger.info("🔥 20+ AI, параллельный опрос, интеллектуальный кэш.")
+    logger.info("✅ Интерактивное меню, живой интерес, авто-постинг.")
+    logger.info("💪 Готов к работе 24/7 на сервере. Код написан раз и навсегда.")
     logger.info("=" * 70)
 
-    # Запуск бота с автоматическим перезапуском при сбое
     while True:
         try:
             bot.polling(none_stop=True, timeout=60, long_polling_timeout=30)
         except Exception as e:
-            logger.error(f"Критическая ошибка: {e}. Перезапуск через 5 секунд...")
-            time.sleep(5)
+            logger.error(f"🔄 Системная ошибка: {e}. Перезапуск через 3 секунды...")
+            time.sleep(3)
