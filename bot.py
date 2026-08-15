@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-AURA KVINSI v22.1 — Безопасная версия для промышленности
-Все ключи вынесены в переменные окружения (.env)
+AURA KVINSI v22.1 — Промышленный интеллект
+Все ключи вынесены в .env
 """
 
 import os
@@ -36,10 +36,8 @@ from telegram.ext import (
     ContextTypes, filters
 )
 
-# Загружаем переменные из .env
 load_dotenv()
 
-# ========== ЛОГИРОВАНИЕ ==========
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO,
@@ -47,9 +45,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# ========== КОНФИГ (из переменных окружения) ==========
 def get_config():
-    """Загружает конфигурацию из переменных окружения."""
     required = [
         "TELEGRAM_BOT_TOKEN",
         "OPENROUTER_API_KEY",
@@ -59,7 +55,7 @@ def get_config():
         "PEXELS_API_KEY",
         "DEEPL_API_KEY",
         "GNEWS_API_KEY",
-        "NEWSAPI_KEY",
+        "NEWSAPI_API_KEY",
         "GITHUB_TOKEN"
     ]
     config = {}
@@ -69,23 +65,17 @@ def get_config():
         if not value:
             missing.append(key)
         config[key] = value
-
-    # Необязательные, но с значениями по умолчанию
     config["GITHUB_REPO"] = os.getenv("GITHUB_REPO", "AuraKvinsi/AuraBot")
     config["CHANNEL_ID"] = os.getenv("CHANNEL_ID", "@AuraKvinsi")
     config["DB_FILE"] = os.getenv("DB_FILE", "aura_bot.db")
-
     if missing:
-        logger.critical(f"Отсутствуют обязательные переменные: {', '.join(missing)}")
-        print(f"❌ Ошибка: не заданы переменные: {', '.join(missing)}")
-        print("Создайте файл .env и укажите их.")
+        logger.critical(f"Missing variables: {', '.join(missing)}")
+        print(f"❌ Error: missing variables: {', '.join(missing)}")
         sys.exit(1)
-
     return config
 
 CONFIG = get_config()
 
-# ========== БАЗА ДАННЫХ ==========
 def init_db():
     conn = sqlite3.connect(CONFIG["DB_FILE"])
     c = conn.cursor()
@@ -112,7 +102,6 @@ def init_db():
     conn.close()
 init_db()
 
-# ========== API HANDLER ==========
 class APIHandler:
     def __init__(self):
         self.session = None
@@ -159,7 +148,7 @@ class APIHandler:
             ))
             return best
 
-        logger.warning("OpenRouter не ответил, пробуем DeepSeek напрямую.")
+        logger.warning("OpenRouter failed, trying DeepSeek directly.")
         try:
             ds_resp = await self._deepseek_direct(system_prompt, user_message)
             if ds_resp and len(ds_resp) > 30:
@@ -167,7 +156,7 @@ class APIHandler:
         except Exception as e:
             logger.error(f"DeepSeek error: {e}")
 
-        logger.warning("DeepSeek не ответил, пробуем HuggingFace.")
+        logger.warning("DeepSeek failed, trying HuggingFace.")
         for hf_model in self.hf_models:
             try:
                 hf_resp = await self._huggingface_request(hf_model, prompt)
@@ -248,7 +237,6 @@ class APIHandler:
             logger.error(f"HF {model} error: {e}")
             return ""
 
-    # ---------- Остальные методы без изменений (используют CONFIG) ----------
     async def get_weather(self, city: str) -> str:
         url = "https://api.openweathermap.org/data/2.5/weather"
         params = {"q": city, "appid": CONFIG["OPENWEATHERMAP_API_KEY"], "units": "metric", "lang": "ru"}
@@ -317,7 +305,7 @@ class APIHandler:
         except: pass
         try:
             n_url = "https://newsapi.org/v2/top-headlines"
-            n_params = {"q": query or "business", "apiKey": CONFIG["NEWSAPI_KEY"], "language": "ru", "pageSize": 5}
+            n_params = {"q": query or "business", "apiKey": CONFIG["NEWSAPI_API_KEY"], "language": "ru", "pageSize": 5}
             resp = self.session.get(n_url, params=n_params, timeout=10)
             if resp.status_code == 200:
                 for a in resp.json().get("articles", []):
@@ -356,7 +344,6 @@ class APIHandler:
         except:
             return "Почему программисты путают Хэллоуин и Рождество? Потому что 31 Oct = 25 Dec."
 
-# ========== ОСНОВНОЙ БОТ ==========
 class AuraBot:
     def __init__(self):
         self.api = APIHandler()
@@ -377,7 +364,6 @@ class AuraBot:
             ["🔕 Тишина", "❓ Помощь"]
         ], resize_keyboard=True)
 
-    # ---------- Команды (все, как в v22.0) ----------
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user = update.effective_user
         now = datetime.now()
@@ -447,7 +433,6 @@ class AuraBot:
         response = await self.api.smart_chat(prompt, style="technical")
         await self._send_long(update, response)
 
-    # Стандартные команды
     async def weather_command(self, update, context):
         city = " ".join(context.args) if context.args else "Москва"
         await update.message.reply_text(await self.api.get_weather(city))
@@ -522,7 +507,6 @@ class AuraBot:
         self.quiet_until[user_id] = datetime.now() + timedelta(hours=2)
         await update.message.reply_text("🔕 Режим «Не беспокоить» включён на 2 часа.")
 
-    # ---------- Обработчик текста ----------
     async def handle_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_id = update.effective_user.id
         text = update.message.text
@@ -577,7 +561,6 @@ class AuraBot:
         else:
             await update.message.reply_text(text)
 
-    # ---------- Фоновые задачи ----------
     async def publish_daily_posts(self, context: ContextTypes.DEFAULT_TYPE):
         now = datetime.now()
         rubrics = ["Экономика дня", "Мысль на сегодня", "Техно-обзор", "Мнение Ауры"]
@@ -656,6 +639,7 @@ class AuraBot:
                 repo = CONFIG["GITHUB_REPO"]
                 url = f"https://api.github.com/repos/{repo}/commits/main"
                 headers = {"Authorization": f"token {CONFIG['GITHUB_TOKEN']}"}
+                import aiohttp
                 async with aiohttp.ClientSession() as session:
                     async with session.get(url, headers=headers) as resp:
                         if resp.status == 200:
@@ -722,4 +706,3 @@ if __name__ == "__main__":
         logger.critical(f"Критическая ошибка: {e}")
         time.sleep(5)
         os.execv(sys.executable, [sys.executable] + sys.argv)
-    
