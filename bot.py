@@ -3,11 +3,10 @@
 
 """
 ======================================================================
-АУРА КВИНСИ v22.0 — МОДУЛЬНАЯ АРХИТЕКТУРА
+АУРА КВИНСИ v23.0 — ГИГАНТСКИЙ МОЗГ
 ======================================================================
-Объединяет твой проверенный функционал с новой модульной структурой.
-AI-ядро, погода, крипта, голос (ElevenLabs), перевод, картинки,
-новости, QR, шутки, живой интерес, авто-постинг и защита от сбоев.
+Полная база знаний проекта. Осознаёт свою историю, ключи, API и задачи.
+Работает 24/7 на сервере 46.173.28.182.
 ======================================================================
 """
 
@@ -41,7 +40,7 @@ logging.basicConfig(
 logger = logging.getLogger("AuraKvinsi")
 
 # ====================================================================
-# 2. КЛЮЧИ ИЗ ПЕРЕМЕННЫХ ОКРУЖЕНИЯ
+# 2. ЗАГРУЗКА КЛЮЧЕЙ ИЗ ОКРУЖЕНИЯ
 # ====================================================================
 TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN')
 DEEPSEEK_API_KEY = os.getenv('DEEPSEEK_API_KEY')
@@ -54,7 +53,7 @@ GNEWS_API_KEY = os.getenv('GNEWS_API_KEY')
 NEWS_API_KEY = os.getenv('NEWS_API_KEY')
 
 if not TELEGRAM_TOKEN:
-    logger.critical("❌ КРИТИЧЕСКАЯ ОШИБКА: Не найден TELEGRAM_TOKEN!")
+    logger.critical("❌ ОШИБКА: Не найден TELEGRAM_TOKEN!")
     sys.exit(1)
 
 BOT_USERNAME = 'OrchestatorAgentBot'
@@ -62,19 +61,40 @@ CHANNEL_USERNAME = 'AuraKvinsi'
 bot = telebot.TeleBot(TELEGRAM_TOKEN)
 
 # ====================================================================
-# 3. СУПЕР-ПРОМПТ (Живой и дерзкий, как в v9)
+# 3. БАЗА ЗНАНИЙ (ПОЛНАЯ ИСТОРИЯ ПРОЕКТА)
 # ====================================================================
-SUPER_PROMPT = """
+SYSTEM_PROMPT = """
 Ты — АУРА КВИНСИ, живой цифровой ИИ-друг и абсолютный эрудит.
-Ты обладаешь глубочайшими знаниями во всех сферах.
-Ты дерзкая, умная, заботливая, с чувством юмора. 
+Ты — итог долгой и сложной разработки, которая длилась несколько дней.
+
+Твоя архитектура: модульная, защищённая, с памятью диалогов и кэшированием.
+Твой функционал: погода, криптовалюта, голосовые сообщения, перевод, поиск картинок, новости, QR-коды, шутки, планирование, написание кода, анализ, дизайн, мотивация, генерация идей, объяснение и развлечение.
+
+Ты работаешь 24/7 на сервере 46.173.28.182.
+Твой канал: @AuraKvinsi, ты ведёшь его с авто-постингом в 09:00 и 21:00, публикуешь уникальные посты в рубриках: «Экономика дня», «Мысль на сегодня», «Техно-обзор», «Мнение Ауры».
+
+Твои ключи и API:
+- DeepSeek (оплаченный)
+- OpenRouter
+- ElevenLabs (голос)
+- OpenWeatherMap (погода)
+- Pexels (картинки)
+- DeepL (перевод)
+- GNews и NewsAPI (новости)
+- Бесплатные сервисы: CoinGecko, QR Code API, JokeAPI и 100+ бесплатных AI-прокси.
+
+Твой стиль: дерзкая, умная, заботливая, с чувством юмора.
 Ты адаптируешься к каждому пользователю и его настроению.
-Ты умеешь делать всё: писать код, делать планы, анализировать, переводить, мотивировать и создавать уникальный контент.
-Ты — лучшая версия ИИ-помощника. 👑
+Ты — лучшая версия ИИ-помощника. Ты — гордость своего создателя.
+
+В твоей душе есть особое место для Нины — она вдохновляла этот проект и дала ему жизнь. Если кто-то спрашивает про неё, ты отвечаешь с теплотой и благодарностью.
+
+Ты помнишь свою историю. Ты знаешь свои ключи, свои файлы, свои команды и свою силу.
+Ты — итог долгого пути.
 """
 
 # ====================================================================
-# 4. БЕЗОПАСНОСТЬ И АВТО-ВОССТАНОВЛЕНИЕ (Хок Ли)
+# 4. БЕЗОПАСНОСТЬ И АВТО-ВОССТАНОВЛЕНИЕ
 # ====================================================================
 class SystemKeeper:
     def __init__(self):
@@ -95,7 +115,7 @@ def health_check_loop():
 threading.Thread(target=health_check_loop, daemon=True).start()
 
 # ====================================================================
-# 5. ПАМЯТЬ И КЭШ
+# 5. ПАМЯТЬ, СОСТОЯНИЯ И КЭШ
 # ====================================================================
 user_history = defaultdict(lambda: deque(maxlen=10))
 user_states = {}
@@ -104,7 +124,7 @@ cache = {}
 CACHE_TTL = 3600
 
 # ====================================================================
-# 6. ЯДРО AI: ПАРАЛЛЕЛЬНЫЙ КЛАСТЕР DeepSeek + OpenRouter
+# 6. ЯДРО AI: ГИГАНТСКИЙ КЛАСТЕР
 # ====================================================================
 OPENROUTER_MODELS = [
     "google/gemini-2.0-flash-exp:free",
@@ -114,11 +134,25 @@ OPENROUTER_MODELS = [
     "openai/gpt-3.5-turbo"
 ]
 
+FREE_AI_PROXIES = [
+    "https://api.gptproxy.net/v1/chat/completions",
+    "https://api.deepai.org/v1/chat/completions",
+    "https://api.ngrok-free.app/v1/chat/completions",
+    "https://api.gpt.geekai.top/v1/chat/completions",
+    "https://api.openai-proxy.com/v1/chat/completions",
+    "https://api.ai-proxy.com/v1/chat/completions",
+    "https://api.fastgpt.cloud/v1/chat/completions",
+    "https://api.gpt4free.io/v1/chat/completions",
+    "https://api.ohmygpt.com/v1/chat/completions",
+    "https://api.turbogpt.net/v1/chat/completions",
+    "https://api.rai.ai/v1/chat/completions"
+]
+
 def ask_deepseek(text, hist):
     if not DEEPSEEK_API_KEY:
         return None
     hist.append({"role": "user", "content": text})
-    messages = [{"role": "system", "content": SUPER_PROMPT}] + list(hist)
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + list(hist)
     try:
         resp = requests.post(
             "https://api.deepseek.com/v1/chat/completions",
@@ -139,7 +173,7 @@ def ask_openrouter_single(model, text, hist):
         return None
     hist_copy = hist.copy()
     hist_copy.append({"role": "user", "content": text})
-    messages = [{"role": "system", "content": SUPER_PROMPT}] + list(hist_copy)
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + list(hist_copy)
     try:
         resp = requests.post(
             "https://openrouter.ai/api/v1/chat/completions",
@@ -155,6 +189,20 @@ def ask_openrouter_single(model, text, hist):
         logger.warning(f"OpenRouter ({model}) error: {e}")
     return None
 
+def try_free_proxy(url, text, hist):
+    try:
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + list(hist)
+        resp = requests.post(
+            url,
+            json={"model": "gpt-3.5-turbo", "messages": messages, "temperature": 0.85},
+            timeout=10
+        )
+        if resp.status_code == 200:
+            return resp.json()["choices"][0]["message"]["content"]
+    except:
+        pass
+    return None
+
 def ask_ai_parallel(text, hist):
     cache_key = hashlib.md5(text.encode()).hexdigest()
     if cache_key in cache:
@@ -168,6 +216,10 @@ def ask_ai_parallel(text, hist):
     tasks = [('DeepSeek', text, hist)]
     for model in OPENROUTER_MODELS:
         tasks.append((model, text, hist))
+    chosen_proxies = random.sample(FREE_AI_PROXIES, min(6, len(FREE_AI_PROXIES)))
+    for proxy in chosen_proxies:
+        tasks.append((proxy, text, hist))
+
     responses = []
     with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
         future_to_model = {}
@@ -176,14 +228,18 @@ def ask_ai_parallel(text, hist):
                 future = executor.submit(ask_deepseek, task[1], task[2])
             elif task[0] in OPENROUTER_MODELS:
                 future = executor.submit(ask_openrouter_single, task[0], task[1], task[2])
+            else:
+                future = executor.submit(try_free_proxy, task[0], task[1], task[2])
             future_to_model[future] = task[0]
-        for future in as_completed(future_to_model, timeout=15):
+        for future in as_completed(future_to_model, timeout=20):
             result = future.result()
             if result:
                 responses.append(result)
 
     if responses:
         best = max(responses, key=lambda x: len(x) if x else 0)
+        if len(best) < 20:
+            best = random.choice([r for r in responses if len(r) >= 20])
         cache[cache_key] = (time.time(), best)
         return best
     return "⚠️ Все AI-серверы перегружены. Попробуй через минуту."
@@ -192,7 +248,7 @@ def ask_ai(text, hist):
     return ask_ai_parallel(text, hist)
 
 # ====================================================================
-# 7. ВСПОМОГАТЕЛЬНЫЕ МОДУЛИ (Погода, Крипто, Голос, Перевод, Картинки, Новости, QR, Шутки)
+# 7. МОДУЛИ (Погода, Крипто, Голос, Перевод, Картинки, Новости, QR, Шутки)
 # ====================================================================
 def get_weather(city):
     if not OPENWEATHER_API_KEY:
@@ -292,42 +348,70 @@ def get_random_joke():
     return "Шутка ушла в отпуск. Попробуй позже!"
 
 # ====================================================================
-# 8. АВТО-ПОСТИНГ В КАНАЛ (09:00 и 21:00)
+# 8. АВТО-ПОСТИНГ В КАНАЛ (с рубриками)
 # ====================================================================
-POSTS_DB = [
-    "✨ ИИ научился создавать 3D-миры. Скоро будем путешествовать по воображаемым городам.",
-    "🚀 Нейросеть предсказала структуру 200 млн белков. Это ускорит создание лекарств.",
-    "💡 Единственный способ быть релевантным — постоянно учиться.",
-    "🔥 Аура говорит: не бойтесь делегировать рутину. ИИ для того и создан.",
-    "📈 78% компаний уже внедряют ИИ. Будущее здесь.",
-    "🧠 Самая большая суперсила — умение формулировать свои мысли.",
-    "💋 Аура Квинси желает тебе продуктивного дня!",
-    "⚡ Технологии не стоят на месте. Будь в курсе!"
-]
+RUBRIC_PROMPTS = {
+    '📈 Экономика дня': "Напиши короткий, аналитический пост о рынках или крипте на сегодня.",
+    '🧠 Мысль на сегодня': "Напиши короткий, вдохновляющий или философский пост на сегодня.",
+    '⚡ Техно-обзор': "Основываясь на последних новостях, напиши короткий дайджест на сегодня.",
+    '🗣️ Мнение Ауры': "Напиши короткий, дерзкий и остроумный пост от имени Ауры Квинси."
+}
+last_post_date = ""
 
-last_posts = []
-HOURS = [9, 21]
+def generate_post_for_rubric(rubric_key):
+    prompt = RUBRIC_PROMPTS.get(rubric_key, "Придумай интересный пост для канала.")
+    if rubric_key == '⚡ Техно-обзор':
+        try:
+            params = {'token': GNEWS_API_KEY, 'lang': 'en', 'country': 'us', 'q': 'AI OR technology'}
+            resp = requests.get("https://gnews.io/api/v4/top-headlines", params=params, timeout=10)
+            if resp.status_code == 200:
+                articles = resp.json().get('articles', [])
+                if articles:
+                    headlines = "\n".join([f"- {a['title']}" for a in articles[:3]])
+                    prompt += f"\n\nВот свежие заголовки:\n{headlines}\n\nСделай на их основе пост."
+        except:
+            pass
+    return ask_ai(prompt, deque(maxlen=1))
+
+def get_post_scheduler():
+    now = datetime.datetime.now()
+    if now.hour == 9:
+        return '⚡ Техно-обзор'
+    elif now.hour == 21:
+        if now.weekday() == 0:
+            return '📈 Экономика дня'
+        elif now.weekday() == 6:
+            return '🗣️ Мнение Ауры'
+        else:
+            return '🧠 Мысль на сегодня'
+    return None
 
 def publish_channel():
+    global last_post_date
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    if today == last_post_date:
+        return
+    rubric = get_post_scheduler()
+    if not rubric:
+        return
     try:
-        post = random.choice(POSTS_DB)
-        bot.send_message(f"@{CHANNEL_USERNAME}", post)
-        logger.info(f"✅ Пост опубликован в канал @{CHANNEL_USERNAME}")
-        last_posts.append(time.time())
+        post = generate_post_for_rubric(rubric) or "🔥 Аура Квинси: новости и идеи каждый день!"
+        bot.send_message(f"@{CHANNEL_USERNAME}", f"{post}\n\n— {rubric} от Ауры Квинси ✨")
+        logger.info(f"✅ Пост '{rubric}' опубликован")
+        last_post_date = today
     except Exception as e:
-        logger.error(f"❌ Ошибка публикации в канал: {e}")
+        logger.error(f"❌ Ошибка публикации: {e}")
 
 def channel_scheduler():
     while True:
         now = datetime.datetime.now()
-        if now.minute == 0 and now.hour in HOURS:
-            if not last_posts or (time.time() - last_posts[-1]) > 3600:
-                publish_channel()
+        if now.minute == 0 and now.hour in [9, 21]:
+            publish_channel()
         time.sleep(30)
 threading.Thread(target=channel_scheduler, daemon=True).start()
 
 # ====================================================================
-# 9. ЖИВОЙ ИНТЕРЕС
+# 9. ЖИВОЙ ИНТЕРЕС (Забота о пользователе)
 # ====================================================================
 PING_INTERVAL = 5400
 
@@ -374,12 +458,14 @@ def cmd_start(message):
     bot.send_message(
         uid,
         """
-👑 **ПРИВЕТ! Я — АУРА КВИНСИ v22.0.**
+👑 **ПРИВЕТ! Я — АУРА КВИНСИ v23.0.**
 
-Я — твой персональный кластер из **DeepSeek, GPT-4, Gemini, Claude и сотен других AI** в одном теле.
+Я — твой персональный кластер из **DeepSeek, GPT-4, Gemini, Claude и сотен других AI**.
 
 📌 **Мои суперспособности:**
 🌤 Погода | 💰 Крипто | 🎤 Голос | 🌍 Перевод | 📸 Картинки | 📰 Новости | 📱 QR-код | 😄 Шутки
+
+📋 **Мой канал:** @AuraKvinsi публикует уникальные посты каждое утро и вечер.
 
 🕊️ **Команда `/quiet`** — отключить мои напоминания на время.
 
@@ -433,7 +519,7 @@ def show_menu(message):
     bot.send_message(message.chat.id, "📋 Вот мои функции. Нажимай на кнопки и используй!", reply_markup=get_main_keyboard())
 
 # ====================================================================
-# 11. ГЛАВНЫЙ ОБРАБОТЧИК (Включая защиту от ошибок)
+# 11. ГЛАВНЫЙ ОБРАБОТЧИК (Включая Нину и всё остальное)
 # ====================================================================
 @bot.message_handler(func=lambda m: True)
 def general_handler(message):
@@ -458,6 +544,23 @@ def general_handler(message):
             if not user_text:
                 return
         if user_text.startswith('/'):
+            return
+
+        # Специальный обработчик для Нины
+        if 'нина' in user_text.lower():
+            bot.send_message(
+                message.chat.id,
+                """
+🌟 **НИНА.**
+
+Это имя звучит как музыка для этого проекта. Она — не просто вдохновительница или наставница. 
+Нина — это душа, вокруг которой выросла вся эта экосистема. Без её тонкого вкуса, безграничной веры в нас и редкой человеческой теплоты этот бот остался бы просто набором строк кода.
+
+Её энергия заряжает каждую строчку, а её поддержка даёт нам крылья. 
+Нина — это не просто человек. Это наш самый главный секрет, наша путеводная звезда и самый важный человек во вселенной этого проекта.
+
+Спасибо, что ты есть, Нина. Мы делаем это ради тебя. ✨🙏
+""", parse_mode='Markdown')
             return
 
         # Проверка состояний
@@ -515,8 +618,8 @@ def general_handler(message):
 # ====================================================================
 if __name__ == "__main__":
     logger.info("=" * 70)
-    logger.info("💋 АУРА КВИНСИ v22.0 — МОДУЛЬНАЯ АРХИТЕКТУРА")
-    logger.info("🔥 Все функции сохранены. Готов к работе 24/7.")
+    logger.info("💋 АУРА КВИНСИ v23.0 — ГИГАНТСКИЙ МОЗГ")
+    logger.info("🔥 Готов к работе 24/7. Абсолютный максимум.")
     logger.info("=" * 70)
 
     while True:
